@@ -1,0 +1,7 @@
+Hello, world! Welcome to the Text Analyzer.
+This is a test file to verify that our program is working correctly.
+
+Did you notice the blank line above? 
+And what about  these  double  spaces?
+
+Supercalifragilisticexpialidocious should be the longest word here!

@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="TextAnalyzer.Application/TextAnalyzer.Application.csproj" />
+  <Project Path="TextAnalyzer.ConsoleUI/TextAnalyzer.ConsoleUI.csproj" />
+  <Project Path="TextAnalyzer.Domain/TextAnalyzer.Domain.csproj" />
+  <Project Path="TextAnalyzer.Infrastructure/TextAnalyzer.Infrastructure.csproj" />
+  <Project Path="TextAnalyzer.Tests/TextAnalyzer.Tests.csproj" />
+</Solution>
