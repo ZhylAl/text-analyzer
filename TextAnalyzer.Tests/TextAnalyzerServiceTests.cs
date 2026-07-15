@@ -1,5 +1,4 @@
 ﻿using TextAnalyzer.Domain.Services;
-using Xunit;
 
 namespace TextAnalyzer.Tests;
 

@@ -1,4 +1,4 @@
-﻿using TextAnalyzer.Application.FileReader;
+using TextAnalyzer.Application.Reader;
 using TextAnalyzer.Domain.Models;
 using TextAnalyzer.Domain.Services;
 

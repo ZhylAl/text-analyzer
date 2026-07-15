@@ -1,4 +1,4 @@
-﻿namespace TextAnalyzer.Application.FileReader;
+namespace TextAnalyzer.Application.Reader;
 
 public interface IFileReader
 {

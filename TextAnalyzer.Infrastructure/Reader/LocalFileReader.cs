@@ -1,6 +1,6 @@
-﻿using TextAnalyzer.Application.FileReader;
+using TextAnalyzer.Application.Reader;
 
-namespace TextAnalyzer.Infrastructure.FileReader;
+namespace TextAnalyzer.Infrastructure.Reader;
 
 public class LocalFileReader : IFileReader
 {
