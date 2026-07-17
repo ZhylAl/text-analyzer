@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using System.IO;
 using Microsoft.Extensions.DependencyInjection;
 using TextAnalyzer.Application.Analysis;
 using TextAnalyzer.Application.Reader;
@@ -6,6 +7,7 @@ using TextAnalyzer.Application.Export;
 using TextAnalyzer.Domain.Services;
 using TextAnalyzer.Infrastructure.Export;
 using TextAnalyzer.Infrastructure.Reader;
+using Microsoft.Extensions.Configuration;
 
 namespace TextAnalyzer.ConsoleUI;
 
@@ -13,10 +15,18 @@ class Program
 {
     static void Main(string[] args)
     {
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .Build();
+
+        // Ok to get it like this? Without creating a dedicated class for settings? I think so, since it's just a single setting
+        string[] allowedExtensions = configuration.GetSection("ReaderSettings:AllowedExtensions").Get<string[]>();
+
         // DI Container
         var serviceProvider = new ServiceCollection()
             .AddSingleton<IFileReader, LocalFileReader>()
-            .AddSingleton<IDirectoryReader, LocalDirectoryReader>()
+            .AddSingleton<IDirectoryReader>(sp => new LocalDirectoryReader(allowedExtensions))
             .AddSingleton<ITextAnalyzerService, TextAnalyzerService>()
             .AddSingleton<IFileAnalysisResultWriter, CsvFileAnalysisResultWriter>()
             .AddTransient<AnalyzeFileUseCase>()
