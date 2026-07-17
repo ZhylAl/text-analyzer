@@ -60,7 +60,7 @@ class Program
 
     static void AnalyzeSingleFile(ServiceProvider serviceProvider)
     {
-        string filePath = AnsiConsole.Ask<string>("Enter the path to the text file:");
+        string filePath = AnsiConsole.Ask<string>("Enter the path to the text file:").Trim('"');
 
         var useCase = serviceProvider.GetRequiredService<AnalyzeFileUseCase>();
         
@@ -88,7 +88,7 @@ class Program
 
     static void AnalyzeFolder(ServiceProvider serviceProvider)
     {
-        string folderPath = AnsiConsole.Ask<string>("Enter the path to the folder:");
+        string folderPath = AnsiConsole.Ask<string>("Enter the path to the folder:").Trim('"');
 
         var useCase = serviceProvider.GetRequiredService<AnalyzeFolderUseCase>();
         
