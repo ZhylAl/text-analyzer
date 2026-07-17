@@ -33,7 +33,12 @@ public class AnalyzeFolderUseCase
 
         // Used Parallel.ForEach because slicing strings and counting 
         // characters is mainly CPU work and underlying methods are synchronous
-        Parallel.ForEach(filePaths, filePath =>
+        var parallelOptions = new ParallelOptions
+        {
+            MaxDegreeOfParallelism = Environment.ProcessorCount
+        };
+
+        Parallel.ForEach(filePaths, parallelOptions, filePath =>
         {
             try
             {
@@ -43,10 +48,19 @@ public class AnalyzeFolderUseCase
                 string fileName = Path.GetFileName(filePath);
                 results.Add(new FileAnalysisResult(fileName, analysisResult));
             }
-            catch
+            catch (UnauthorizedAccessException ex)
+            {
+                Console.WriteLine($"[Warning] Access denied to file: {filePath}. Skipping...");
+            }
+            catch (IOException ex)
+            {
+                Console.WriteLine($"[Warning] Could not read file {filePath}. It might be in use. Details: {ex.Message}");
+            }
+            catch(Exception ex)
             {
                 // Just skip files that cant be read
                 // In a real application I would log this exception
+                Console.WriteLine($"[Warning] Could not read file {filePath}. Details: {ex.Message}");
             }
         });
 
