@@ -1,4 +1,4 @@
-﻿using TextAnalyzer.Domain.Services;
+using TextAnalyzer.Domain.Services;
 
 namespace TextAnalyzer.Tests;
 
@@ -32,6 +32,22 @@ public class TextAnalyzerServiceTests
     {
         // Arrange
         string text = "";
+
+        // Act
+        var result = _analyzerService.Analyze(text);
+
+        // Assert
+        Assert.Equal(0, result.CharCount);
+        Assert.Equal(0, result.WordCount);
+        Assert.Equal(0, result.LineCount);
+        Assert.Equal(string.Empty, result.LongestWord);
+    }
+
+    [Fact]
+    public void Analyze_WithNullString_ReturnsZeros()
+    {
+        // Arrange
+        string text = null;
 
         // Act
         var result = _analyzerService.Analyze(text);

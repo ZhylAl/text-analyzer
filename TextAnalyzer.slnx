@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="docker-compose.yml" />
+  </Folder>
   <Project Path="TextAnalyzer.Application/TextAnalyzer.Application.csproj" />
   <Project Path="TextAnalyzer.ConsoleUI/TextAnalyzer.ConsoleUI.csproj" />
   <Project Path="TextAnalyzer.Domain/TextAnalyzer.Domain.csproj" />

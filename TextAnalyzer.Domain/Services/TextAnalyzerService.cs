@@ -12,7 +12,7 @@ public class TextAnalyzerService : ITextAnalyzerService
         }
 
         int charCount = text.Length; // count all characters including space and punctuation and newlines
-        //int charCount = text.Count(c => !char.IsWhiteSpace(c)); // count all characters excluding space and newlines and tabs
+        //int charCount = text.Cunt(c => !char.IsWhiteSpace(c)); // count all characters excluding space and newlines and tabs
         //int charCount = text.Count(c => c != '\r' && c != '\n' && c != '\t'); // count all characters excluding newlines and tab
 
 

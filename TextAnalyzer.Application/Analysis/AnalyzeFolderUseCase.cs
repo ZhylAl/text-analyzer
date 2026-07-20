@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using TextAnalyzer.Application.Models;
 using TextAnalyzer.Application.Reader;
 using TextAnalyzer.Application.Export;
+using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Domain.Models;
 using TextAnalyzer.Domain.Services;
 
@@ -13,21 +14,25 @@ public class AnalyzeFolderUseCase
     private readonly IFileReader _fileReader;
     private readonly ITextAnalyzerService _analyzerService;
     private readonly IFileAnalysisResultWriter _resultWriter;
+    private readonly ISessionRepository _sessionRepository;
 
     public AnalyzeFolderUseCase(
         IDirectoryReader directoryReader,
         IFileReader fileReader,
         ITextAnalyzerService analyzerService,
-        IFileAnalysisResultWriter resultWriter)
+        IFileAnalysisResultWriter resultWriter,
+        ISessionRepository sessionRepository)
     {
         _directoryReader = directoryReader;
         _fileReader = fileReader;
         _analyzerService = analyzerService;
         _resultWriter = resultWriter;
+        _sessionRepository = sessionRepository;
     }
 
-    public string Execute(string folderPath)
+    public async Task<string> Execute(string folderPath, CancellationToken ct = default)
     {
+        var startedAt = DateTime.UtcNow;
         var filePaths = _directoryReader.GetTextFiles(folderPath);
         var results = new ConcurrentBag<FileAnalysisResult>();
 
@@ -35,18 +40,18 @@ public class AnalyzeFolderUseCase
         // characters is mainly CPU work and underlying methods are synchronous
         var parallelOptions = new ParallelOptions
         {
-            MaxDegreeOfParallelism = Environment.ProcessorCount
+            MaxDegreeOfParallelism = Environment.ProcessorCount,
+            CancellationToken = ct
         };
 
-        Parallel.ForEach(filePaths, parallelOptions, filePath =>
+        await Parallel.ForEachAsync(filePaths, parallelOptions, async (filePath, cancellationToken) =>
         {
             try
             {
-                string text = _fileReader.ReadAllText(filePath);
+                string text = await _fileReader.ReadAllTextAsync(filePath, cancellationToken);
                 var analysisResult = _analyzerService.Analyze(text);
                 
-                string fileName = Path.GetFileName(filePath);
-                results.Add(new FileAnalysisResult(fileName, analysisResult));
+                results.Add(new FileAnalysisResult(filePath, analysisResult));
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -66,7 +71,8 @@ public class AnalyzeFolderUseCase
 
         // Map domain results to Export DTOs
         var exportDtos = results.Select(r => new FileAnalysisExportDto(
-            r.FileName,
+            Path.GetFileName(r.FilePath),
+            r.FilePath,
             r.AnalysisResult.CharCount,
             r.AnalysisResult.WordCount,
             r.AnalysisResult.LineCount,
@@ -81,6 +87,15 @@ public class AnalyzeFolderUseCase
         var longestWordOverall = exportDtos
             .MaxBy(r => r.LongestWord.Length)?
             .LongestWord ?? string.Empty;
+
+        var finishedAt = DateTime.UtcNow;
+        await _sessionRepository.AddAsync(new SessionSaveDto
+        (
+            startedAt,
+            finishedAt,
+            (int)ExecutionMode.Folder,
+            results
+        ));
 
         return longestWordOverall;
     }

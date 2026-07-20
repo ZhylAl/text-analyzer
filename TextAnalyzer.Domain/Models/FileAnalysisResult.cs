@@ -1,6 +1,6 @@
 namespace TextAnalyzer.Domain.Models;
 
 public record FileAnalysisResult(
-    string FileName,
+    string FilePath,
     TextAnalysisResult AnalysisResult
 );

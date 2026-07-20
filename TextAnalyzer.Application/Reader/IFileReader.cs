@@ -2,5 +2,5 @@ namespace TextAnalyzer.Application.Reader;
 
 public interface IFileReader
 {
-    string ReadAllText(string filePath);
+    Task<string> ReadAllTextAsync(string filePath, CancellationToken ct);
 }

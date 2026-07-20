@@ -1,23 +1,31 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Spectre.Console;
 using System;
 using System.IO;
-using Microsoft.Extensions.DependencyInjection;
+using System.Threading;
+using System.Threading.Tasks;
 using TextAnalyzer.Application.Analysis;
-using TextAnalyzer.Application.Reader;
 using TextAnalyzer.Application.Export;
+using TextAnalyzer.Application.Interfaces;
+using TextAnalyzer.Application.Reader;
 using TextAnalyzer.Domain.Services;
+using TextAnalyzer.Infrastructure.Data;
+using TextAnalyzer.Infrastructure.Data.Repositories;
 using TextAnalyzer.Infrastructure.Export;
 using TextAnalyzer.Infrastructure.Reader;
-using Microsoft.Extensions.Configuration;
-using Spectre.Console;
+
 namespace TextAnalyzer.ConsoleUI;
 
 class Program
 {
-    static void Main(string[] args)
+    static async Task Main(string[] args)
     {
         var configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
             .Build();
 
         // Ok to get it like this? Without creating a dedicated class for settings? I think so, since it's just a single setting
@@ -25,10 +33,13 @@ class Program
 
         // DI Container
         var serviceProvider = new ServiceCollection()
+            .AddDbContext<TextAnalyzerDbContext>(options =>
+                options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")))
             .AddSingleton<IFileReader, LocalFileReader>()
             .AddSingleton<IDirectoryReader>(sp => new LocalDirectoryReader(allowedExtensions))
             .AddSingleton<ITextAnalyzerService, TextAnalyzerService>()
             .AddSingleton<IFileAnalysisResultWriter, CsvFileAnalysisResultWriter>()
+            .AddScoped<ISessionRepository, SessionRepository>()
             .AddTransient<AnalyzeFileUseCase>()
             .AddTransient<AnalyzeFolderUseCase>()
             .BuildServiceProvider();
@@ -41,16 +52,28 @@ class Program
                 .PageSize(10)
                 .AddChoices(new[] { "Analyze a single file", "Analyze a folder", "Exit" }));
 
+        using var cts = new CancellationTokenSource();
+        Console.CancelKeyPress += (sender, e) =>
+        {
+            AnsiConsole.MarkupLine("\n[bold red]Cancelling operation...[/]");
+            e.Cancel = true;
+            cts.Cancel();
+        };
+
         try
         {
             if (choice == "Analyze a single file")
             {
-                AnalyzeSingleFile(serviceProvider);
+                await AnalyzeSingleFile(serviceProvider, cts.Token); 
             }
             else if (choice == "Analyze a folder")
             {
-                AnalyzeFolder(serviceProvider);
+                await AnalyzeFolder(serviceProvider, cts.Token); 
             }
+        }
+        catch (OperationCanceledException)
+        {
+            AnsiConsole.MarkupLine("\n[bold yellow]Analysis was cancelled by the user.[/]");
         }
         catch (Exception ex)
         {
@@ -58,17 +81,17 @@ class Program
         }
     }
 
-    static void AnalyzeSingleFile(ServiceProvider serviceProvider)
+    static async Task AnalyzeSingleFile(ServiceProvider serviceProvider, CancellationToken ct)
     {
         string filePath = AnsiConsole.Ask<string>("Enter the path to the text file:").Trim('"');
 
         var useCase = serviceProvider.GetRequiredService<AnalyzeFileUseCase>();
         
         TextAnalyzer.Domain.Models.TextAnalysisResult result = null;
-        AnsiConsole.Status()
-            .Start("Analyzing file...", ctx => 
+        await AnsiConsole.Status()
+            .StartAsync("Analyzing file...", async ctx => 
             {
-                result = useCase.Execute(filePath);
+                result = await useCase.Execute(filePath, ct);
             });
 
         var table = new Table();
@@ -86,18 +109,18 @@ class Program
                 .BorderColor(Color.Blue));
     }
 
-    static void AnalyzeFolder(ServiceProvider serviceProvider)
+    static async Task AnalyzeFolder(ServiceProvider serviceProvider, CancellationToken ct)
     {
         string folderPath = AnsiConsole.Ask<string>("Enter the path to the folder:").Trim('"');
 
         var useCase = serviceProvider.GetRequiredService<AnalyzeFolderUseCase>();
         
         string longestWord = string.Empty;
-        AnsiConsole.Status()
+        await AnsiConsole.Status()
             .Spinner(Spinner.Known.Dots)
-            .Start("Analyzing folder and generating CSV...", ctx => 
+            .StartAsync("Analyzing folder and generating CSV...", async ctx => 
             {
-                longestWord = useCase.Execute(folderPath);
+                longestWord = await useCase.Execute(folderPath, ct);
             });
 
         AnsiConsole.MarkupLine("\n[bold green]Success![/] CSV report 'results.csv' has been generated in the target folder.");

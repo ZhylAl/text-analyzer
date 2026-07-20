@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: text_analyzer_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: your_secret_password
+      POSTGRES_DB: TextAnalyzerDb
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
