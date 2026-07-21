@@ -1,6 +1,6 @@
 using System.Globalization;
 using CsvHelper;
-using TextAnalyzer.Application.Export;
+using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Application.Models;
 
 namespace TextAnalyzer.Infrastructure.Export;

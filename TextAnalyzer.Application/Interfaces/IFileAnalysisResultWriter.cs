@@ -1,6 +1,6 @@
 using TextAnalyzer.Application.Models;
 
-namespace TextAnalyzer.Application.Export;
+namespace TextAnalyzer.Application.Interfaces;
 
 public interface IFileAnalysisResultWriter
 {

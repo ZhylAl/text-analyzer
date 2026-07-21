@@ -1,4 +1,4 @@
-using TextAnalyzer.Application.Reader;
+using TextAnalyzer.Application.Interfaces;
 
 namespace TextAnalyzer.Infrastructure.Reader;
 

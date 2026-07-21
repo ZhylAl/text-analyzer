@@ -2,7 +2,6 @@ using Moq;
 using TextAnalyzer.Application.Analysis;
 using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Application.Models;
-using TextAnalyzer.Application.Reader;
 using TextAnalyzer.Domain.Models;
 using TextAnalyzer.Domain.Services;
 

@@ -1,7 +1,5 @@
 using System.Collections.Concurrent;
 using TextAnalyzer.Application.Models;
-using TextAnalyzer.Application.Reader;
-using TextAnalyzer.Application.Export;
 using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Domain.Models;
 using TextAnalyzer.Domain.Services;
