@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using TextAnalyzer.Application.Analysis;
 using TextAnalyzer.Application.Interfaces;
-using TextAnalyzer.Domain.Services;
+using TextAnalyzer.Application.Services;
 using TextAnalyzer.Infrastructure.Data;
 using TextAnalyzer.Infrastructure.Data.Repositories;
 using TextAnalyzer.Infrastructure.Export;

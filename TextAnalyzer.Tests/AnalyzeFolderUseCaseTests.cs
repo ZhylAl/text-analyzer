@@ -5,7 +5,6 @@ using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Application.Models;
 using TextAnalyzer.Domain.Entities;
 using TextAnalyzer.Domain.Models;
-using TextAnalyzer.Domain.Services;
 
 namespace TextAnalyzer.Tests;
 

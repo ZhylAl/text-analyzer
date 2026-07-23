@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using TextAnalyzer.Application.Analysis;
-using TextAnalyzer.Domain.Services;
+using TextAnalyzer.Application.Services;
 using TextAnalyzer.Infrastructure.Data;
 using TextAnalyzer.Infrastructure.Data.Repositories;
 using TextAnalyzer.Infrastructure.Export;

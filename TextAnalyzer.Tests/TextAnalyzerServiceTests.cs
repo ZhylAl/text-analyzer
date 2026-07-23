@@ -1,4 +1,4 @@
-using TextAnalyzer.Domain.Services;
+using TextAnalyzer.Application.Services;
 
 namespace TextAnalyzer.Tests;
 

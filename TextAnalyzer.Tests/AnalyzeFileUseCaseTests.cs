@@ -2,10 +2,8 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using TextAnalyzer.Application.Analysis;
 using TextAnalyzer.Application.Interfaces;
-using TextAnalyzer.Application.Models;
 using TextAnalyzer.Domain.Entities;
 using TextAnalyzer.Domain.Models;
-using TextAnalyzer.Domain.Services;
 
 namespace TextAnalyzer.Tests;
 

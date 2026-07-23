@@ -4,7 +4,6 @@ using TextAnalyzer.Application.Models;
 using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Application.Mappers;
 using TextAnalyzer.Domain.Models;
-using TextAnalyzer.Domain.Services;
 
 namespace TextAnalyzer.Application.Analysis;
 
