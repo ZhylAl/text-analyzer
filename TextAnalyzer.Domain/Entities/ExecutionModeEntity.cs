@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace TextAnalyzer.Infrastructure.Data.Entities
+namespace TextAnalyzer.Domain.Entities
 {
     public class ExecutionModeEntity
     {

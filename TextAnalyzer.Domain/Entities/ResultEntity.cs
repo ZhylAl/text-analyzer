@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace TextAnalyzer.Infrastructure.Data.Entities
+namespace TextAnalyzer.Domain.Entities
 {
     public class ResultEntity
     {

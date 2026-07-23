@@ -2,6 +2,7 @@ using Moq;
 using TextAnalyzer.Application.Analysis;
 using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Application.Models;
+using TextAnalyzer.Domain.Entities;
 using TextAnalyzer.Domain.Models;
 using TextAnalyzer.Domain.Services;
 
@@ -73,9 +74,9 @@ public class AnalyzeFolderUseCaseTests
         Assert.Contains(capturedExportDtos, d => d.FileName == "file1.txt" && d.LongestWord == "world");
         Assert.Contains(capturedExportDtos, d => d.FileName == "file2.txt" && d.LongestWord == "text");
 
-        _mockSessionRepository.Verify(repo => repo.AddAsync(It.Is<SessionSaveDto>(dto => 
-            dto.ExecutionModeId == (int)ExecutionMode.Folder &&
-            dto.Results.Count == 2
+        _mockSessionRepository.Verify(repo => repo.AddAsync(It.Is<SessionEntity>(entity => 
+            entity.ExecutionModeId == (int)ExecutionMode.Folder &&
+            entity.Results.Count == 2
         )), Times.Once);
     }
 
@@ -92,9 +93,9 @@ public class AnalyzeFolderUseCaseTests
         // Assert
         Assert.Equal(string.Empty, result.LongestWordOverall);
         _mockResultWriter.Verify(w => w.WriteResults(It.IsAny<string>(), It.Is<IEnumerable<FileAnalysisExportDto>>(dtos => !dtos.Any())), Times.Once);
-        _mockSessionRepository.Verify(repo => repo.AddAsync(It.Is<SessionSaveDto>(dto => 
-            dto.ExecutionModeId == (int)ExecutionMode.Folder &&
-            !dto.Results.Any()
+        _mockSessionRepository.Verify(repo => repo.AddAsync(It.Is<SessionEntity>(entity => 
+            entity.ExecutionModeId == (int)ExecutionMode.Folder &&
+            !entity.Results.Any()
         )), Times.Once);
     }
 
@@ -128,9 +129,9 @@ public class AnalyzeFolderUseCaseTests
         Assert.Single(capturedExportDtos);
         Assert.Equal("good.txt", capturedExportDtos.First().FileName);
         
-        _mockSessionRepository.Verify(repo => repo.AddAsync(It.Is<SessionSaveDto>(dto => 
-            dto.ExecutionModeId == (int)ExecutionMode.Folder &&
-            dto.Results.Count == 1
+        _mockSessionRepository.Verify(repo => repo.AddAsync(It.Is<SessionEntity>(entity => 
+            entity.ExecutionModeId == (int)ExecutionMode.Folder &&
+            entity.Results.Count == 1
         )), Times.Once);
     }
 }

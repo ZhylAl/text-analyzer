@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using TextAnalyzer.Infrastructure.Data.Entities;
+using TextAnalyzer.Domain.Entities;
 
 namespace TextAnalyzer.Infrastructure.Data;
 

@@ -2,6 +2,7 @@ using Moq;
 using TextAnalyzer.Application.Analysis;
 using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Application.Models;
+using TextAnalyzer.Domain.Entities;
 using TextAnalyzer.Domain.Models;
 using TextAnalyzer.Domain.Services;
 
@@ -52,12 +53,15 @@ public class AnalyzeFileUseCaseTests
         Assert.Equal(expectedAnalysisResult.LineCount, result.LineCount);
         Assert.Equal(expectedAnalysisResult.LongestWord, result.LongestWord);
 
-        _mockSessionRepository.Verify(repo => repo.AddAsync(It.Is<SessionSaveDto>(dto =>
-            dto.ExecutionModeId == (int)ExecutionMode.SingleFile &&
-            dto.Results.Count() == 1 &&
-            dto.Results.First().FilePath == filePath &&
-            dto.Results.First().AnalysisResult == expectedAnalysisResult
+        _mockSessionRepository.Verify(repo => repo.AddAsync(It.Is<SessionEntity>(entity =>
+            entity.ExecutionModeId == (int)ExecutionMode.SingleFile &&
+            entity.Files.Count == 1 &&
+            entity.Files.First().FilePath == filePath &&
+            entity.Results.Count == 1 &&
+            entity.Results.First().CharCount == expectedAnalysisResult.CharCount &&
+            entity.Results.First().WordCount == expectedAnalysisResult.WordCount
         )), Times.Once);
+
     }
 
     [Fact]
@@ -74,6 +78,6 @@ public class AnalyzeFileUseCaseTests
         await Assert.ThrowsAsync<FileNotFoundException>(() => _useCase.Execute(filePath, CancellationToken.None));
         
         // Ensure that repository was never called because it failed early
-        _mockSessionRepository.Verify(repo => repo.AddAsync(It.IsAny<SessionSaveDto>()), Times.Never);
+        _mockSessionRepository.Verify(repo => repo.AddAsync(It.IsAny<SessionEntity>()), Times.Never);
     }
 }

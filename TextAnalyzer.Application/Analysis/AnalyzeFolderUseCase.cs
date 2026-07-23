@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using TextAnalyzer.Application.Models;
 using TextAnalyzer.Application.Interfaces;
+using TextAnalyzer.Application.Mappers;
 using TextAnalyzer.Domain.Models;
 using TextAnalyzer.Domain.Services;
 
@@ -86,13 +87,15 @@ public class AnalyzeFolderUseCase
             .LongestWord ?? string.Empty;
 
         var finishedAt = DateTime.UtcNow;
-        await _sessionRepository.AddAsync(new SessionSaveDto
+        var dto = new SessionSaveDto
         (
             startedAt,
             finishedAt,
             (int)ExecutionMode.Folder,
             results
-        ));
+        );
+
+        await _sessionRepository.AddAsync(dto.ToEntity());
 
         return new AnalyzeFolderResponse(longestWordOverall, errors.ToArray());
     }

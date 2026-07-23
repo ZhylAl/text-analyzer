@@ -1,4 +1,5 @@
 using TextAnalyzer.Application.Interfaces;
+using TextAnalyzer.Application.Mappers;
 using TextAnalyzer.Application.Models;
 using TextAnalyzer.Domain.Models;
 using TextAnalyzer.Domain.Services;
@@ -25,7 +26,7 @@ public class AnalyzeFileUseCase
         var result = _analyzerService.Analyze(text);
 
         var finishedAt = DateTime.UtcNow;
-        await _sessionRepository.AddAsync(new SessionSaveDto
+        var dto = new SessionSaveDto
         (
             startedAt,
             finishedAt,
@@ -34,7 +35,9 @@ public class AnalyzeFileUseCase
             {
                 new FileAnalysisResult(filePath, result)
             }
-        ));
+        );
+
+        await _sessionRepository.AddAsync(dto.ToEntity());
 
         return result;
     }
