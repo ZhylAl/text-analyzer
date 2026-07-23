@@ -3,11 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console;
 using System;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using TextAnalyzer.Application.Analysis;
-using TextAnalyzer.Application.Models;
 
 namespace TextAnalyzer.ConsoleUI;
 
@@ -15,7 +12,6 @@ class Program
 {
     static async Task Main(string[] args)
     {
-
         var configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
