@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console;
@@ -7,15 +6,8 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Serilog;
 using TextAnalyzer.Application.Analysis;
-using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Application.Models;
-using TextAnalyzer.Domain.Services;
-using TextAnalyzer.Infrastructure.Data;
-using TextAnalyzer.Infrastructure.Data.Repositories;
-using TextAnalyzer.Infrastructure.Export;
-using TextAnalyzer.Infrastructure.Reader;
 
 namespace TextAnalyzer.ConsoleUI;
 
@@ -23,37 +15,17 @@ class Program
 {
     static async Task Main(string[] args)
     {
+
         var configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
             .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
             .Build();
 
-        string connectionString = configuration.GetConnectionString("DefaultConnection");
-        Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Information()
-            .WriteTo.PostgreSQL(
-                connectionString,
-                tableName: "Logs",
-                needAutoCreateTable: true)
-            .CreateLogger();
+        configuration.ConfigureSerilog();
 
-        // Ok to get it like this? Without creating a dedicated class for settings? I think so, since it's just a single setting
-        string[] allowedExtensions = configuration.GetSection("ReaderSettings:AllowedExtensions").Get<string[]>();
-
-        // DI Container
         var serviceProvider = new ServiceCollection()
-            .AddLogging(loggingBuilder => 
-                loggingBuilder.AddSerilog(dispose: true))
-            .AddDbContext<TextAnalyzerDbContext>(options =>
-                options.UseNpgsql(connectionString))
-            .AddSingleton<IFileReader, LocalFileReader>()
-            .AddSingleton<IDirectoryReader>(sp => new LocalDirectoryReader(allowedExtensions))
-            .AddSingleton<ITextAnalyzerService, TextAnalyzerService>()
-            .AddSingleton<IFileAnalysisResultWriter, CsvFileAnalysisResultWriter>()
-            .AddScoped<ISessionRepository, SessionRepository>()
-            .AddTransient<AnalyzeFileUseCase>()
-            .AddTransient<AnalyzeFolderUseCase>()
+            .AddApplicationServices(configuration)
             .BuildServiceProvider();
 
         AnsiConsole.Write(new FigletText("Text Analyzer").Color(Color.Blue));
