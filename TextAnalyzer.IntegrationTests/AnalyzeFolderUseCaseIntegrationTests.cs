@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System;
 using TextAnalyzer.Application.Analysis;
 using TextAnalyzer.Domain.Services;
 using TextAnalyzer.Infrastructure.Data;

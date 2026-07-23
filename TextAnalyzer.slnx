@@ -6,5 +6,6 @@
   <Project Path="TextAnalyzer.ConsoleUI/TextAnalyzer.ConsoleUI.csproj" />
   <Project Path="TextAnalyzer.Domain/TextAnalyzer.Domain.csproj" />
   <Project Path="TextAnalyzer.Infrastructure/TextAnalyzer.Infrastructure.csproj" />
+  <Project Path="TextAnalyzer.IntegrationTests/TextAnalyzer.IntegrationTests.csproj" Id="6fba7c84-a31a-4681-82c1-eb9fc3de9934" />
   <Project Path="TextAnalyzer.Tests/TextAnalyzer.Tests.csproj" />
 </Solution>
