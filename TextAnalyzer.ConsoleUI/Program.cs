@@ -4,10 +4,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console;
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TextAnalyzer.Application.Analysis;
 using TextAnalyzer.Application.Interfaces;
+using TextAnalyzer.Application.Models;
 using TextAnalyzer.Domain.Services;
 using TextAnalyzer.Infrastructure.Data;
 using TextAnalyzer.Infrastructure.Data.Repositories;
@@ -112,16 +114,24 @@ class Program
         string folderPath = AnsiConsole.Ask<string>("Enter the path to the folder:").Trim('"');
 
         var useCase = serviceProvider.GetRequiredService<AnalyzeFolderUseCase>();
-        
-        string longestWord = string.Empty;
+
+        AnalyzeFolderResponse response = null;
         await AnsiConsole.Status()
             .Spinner(Spinner.Known.Dots)
             .StartAsync("Analyzing folder and generating CSV...", async ctx => 
             {
-                longestWord = await useCase.Execute(folderPath, ct);
+                response = await useCase.Execute(folderPath, ct);
             });
 
         AnsiConsole.MarkupLine("\n[bold green]Success![/] CSV report 'results.csv' has been generated in the target folder.");
-        AnsiConsole.MarkupLine($"[blue]Overall Longest Word:[/] [bold]{longestWord}[/]");
+        AnsiConsole.MarkupLine($"[blue]Overall Longest Word:[/] [bold]{response!.LongestWordOverall}[/]");
+
+        if (response.Errors.Any())
+        {
+            foreach (var error in response.Errors)
+            {
+                AnsiConsole.MarkupLine($"[yellow]{error}[/]");
+            }
+        }
     }
 }

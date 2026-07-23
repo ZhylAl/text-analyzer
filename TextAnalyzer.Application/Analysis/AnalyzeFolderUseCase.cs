@@ -28,11 +28,12 @@ public class AnalyzeFolderUseCase
         _sessionRepository = sessionRepository;
     }
 
-    public async Task<string> Execute(string folderPath, CancellationToken ct = default)
+    public async Task<AnalyzeFolderResponse> Execute(string folderPath, CancellationToken ct = default)
     {
         var startedAt = DateTime.UtcNow;
         var filePaths = _directoryReader.GetTextFiles(folderPath);
         var results = new ConcurrentBag<FileAnalysisResult>();
+        var errors = new ConcurrentBag<string>();
 
         // Used Parallel.ForEach because slicing strings and counting 
         // characters is mainly CPU work and underlying methods are synchronous
@@ -53,17 +54,15 @@ public class AnalyzeFolderUseCase
             }
             catch (UnauthorizedAccessException ex)
             {
-                Console.WriteLine($"[Warning] Access denied to file: {filePath}. Skipping...");
+                errors.Add($"Access denied to file: {filePath}. Skipping...");
             }
             catch (IOException ex)
             {
-                Console.WriteLine($"[Warning] Could not read file {filePath}. It might be in use. Details: {ex.Message}");
+                errors.Add($"[Warning] Could not read file {filePath}. It might be in use. Details: {ex.Message}");
             }
             catch(Exception ex)
             {
-                // Just skip files that cant be read
-                // In a real application I would log this exception
-                Console.WriteLine($"[Warning] Could not read file {filePath}. Details: {ex.Message}");
+                errors.Add($"[Warning] Could not read file {filePath}. Details: {ex.Message}");
             }
         });
 
@@ -95,6 +94,6 @@ public class AnalyzeFolderUseCase
             results
         ));
 
-        return longestWordOverall;
+        return new AnalyzeFolderResponse(longestWordOverall, errors.ToArray());
     }
 }

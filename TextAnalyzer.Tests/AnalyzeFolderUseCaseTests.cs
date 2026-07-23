@@ -60,10 +60,10 @@ public class AnalyzeFolderUseCaseTests
             .Callback<string, IEnumerable<FileAnalysisExportDto>>((path, dtos) => capturedExportDtos = dtos.ToList());
 
         // Act
-        string result = await _useCase.Execute(folderPath);
+        AnalyzeFolderResponse result = await _useCase.Execute(folderPath);
 
         // Assert
-        Assert.Equal("world", result);
+        Assert.Equal("world", result.LongestWordOverall);
         
         string expectedCsvPath = Path.Combine(folderPath, "results.csv");
         _mockResultWriter.Verify(w => w.WriteResults(It.Is<string>(p => p == expectedCsvPath), It.IsAny<IEnumerable<FileAnalysisExportDto>>()), Times.Once);
@@ -87,10 +87,10 @@ public class AnalyzeFolderUseCaseTests
         _mockDirectoryReader.Setup(d => d.GetTextFiles(folderPath)).Returns(System.Array.Empty<string>());
 
         // Act
-        string result = await _useCase.Execute(folderPath);
+        AnalyzeFolderResponse result = await _useCase.Execute(folderPath);
 
         // Assert
-        Assert.Equal(string.Empty, result);
+        Assert.Equal(string.Empty, result.LongestWordOverall);
         _mockResultWriter.Verify(w => w.WriteResults(It.IsAny<string>(), It.Is<IEnumerable<FileAnalysisExportDto>>(dtos => !dtos.Any())), Times.Once);
         _mockSessionRepository.Verify(repo => repo.AddAsync(It.Is<SessionSaveDto>(dto => 
             dto.ExecutionModeId == (int)ExecutionMode.Folder &&
@@ -120,10 +120,10 @@ public class AnalyzeFolderUseCaseTests
             .Callback<string, IEnumerable<FileAnalysisExportDto>>((path, dtos) => capturedExportDtos = dtos.ToList());
 
         // Act
-        string result = await _useCase.Execute(folderPath);
+        AnalyzeFolderResponse result = await _useCase.Execute(folderPath);
 
         // Assert
-        Assert.Equal("good", result);
+        Assert.Equal("good", result.LongestWordOverall);
         Assert.NotNull(capturedExportDtos);
         Assert.Single(capturedExportDtos);
         Assert.Equal("good.txt", capturedExportDtos.First().FileName);
