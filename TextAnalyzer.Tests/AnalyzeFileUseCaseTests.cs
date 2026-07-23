@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Moq;
 using TextAnalyzer.Application.Analysis;
 using TextAnalyzer.Application.Interfaces;
@@ -13,6 +14,7 @@ public class AnalyzeFileUseCaseTests
     private readonly Mock<IFileReader> _mockFileReader;
     private readonly Mock<ITextAnalyzerService> _mockAnalyzerService;
     private readonly Mock<ISessionRepository> _mockSessionRepository;
+    private readonly Mock<ILogger<AnalyzeFileUseCase>> _mockLogger;
     private readonly AnalyzeFileUseCase _useCase;
 
     public AnalyzeFileUseCaseTests()
@@ -20,11 +22,13 @@ public class AnalyzeFileUseCaseTests
         _mockFileReader = new Mock<IFileReader>();
         _mockAnalyzerService = new Mock<ITextAnalyzerService>();
         _mockSessionRepository = new Mock<ISessionRepository>();
+        _mockLogger = new Mock<ILogger<AnalyzeFileUseCase>>();
 
         _useCase = new AnalyzeFileUseCase(
             _mockFileReader.Object,
             _mockAnalyzerService.Object,
-            _mockSessionRepository.Object);
+            _mockSessionRepository.Object,
+            _mockLogger.Object);
     }
 
     [Fact]

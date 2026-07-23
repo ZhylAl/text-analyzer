@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using TextAnalyzer.Application.Analysis;
 using TextAnalyzer.Domain.Services;
 using TextAnalyzer.Infrastructure.Data;
@@ -32,7 +33,8 @@ namespace TextAnalyzer.IntegrationTests
             var fileReader = new LocalFileReader();
             var analyzer = new TextAnalyzerService();
             var writer = new CsvFileAnalysisResultWriter();
-            var useCase = new AnalyzeFolderUseCase(dirReader, fileReader, analyzer, writer, repository);
+            var logger = NullLogger<AnalyzeFolderUseCase>.Instance;
+            var useCase = new AnalyzeFolderUseCase(dirReader, fileReader, analyzer, writer, repository, logger);
 
             using var tempDir = new TempDirectoryHelper();
 

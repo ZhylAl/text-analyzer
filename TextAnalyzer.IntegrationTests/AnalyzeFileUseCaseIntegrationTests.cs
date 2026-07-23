@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using TextAnalyzer.Application.Analysis;
 using TextAnalyzer.Domain.Services;
 using TextAnalyzer.Infrastructure.Data;
@@ -29,7 +30,8 @@ public class AnalyzeFileUseCaseIntegrationTests : IClassFixture<PostgreSqlDataba
         var repository = new SessionRepository(context);
         var reader = new LocalFileReader();
         var analyzer = new TextAnalyzerService();
-        var useCase = new AnalyzeFileUseCase(reader, analyzer, repository);
+        var logger = NullLogger<AnalyzeFileUseCase>.Instance;
+        var useCase = new AnalyzeFileUseCase(reader, analyzer, repository, logger); 
 
         using var tempFile = new TempFileHelper("Hello integration test world");
 
