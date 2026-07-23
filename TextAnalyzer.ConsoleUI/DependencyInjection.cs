@@ -27,6 +27,7 @@ namespace TextAnalyzer.ConsoleUI
                 .AddSingleton<ITextAnalyzerService, TextAnalyzerService>()
                 .AddSingleton<IFileAnalysisResultWriter, CsvFileAnalysisResultWriter>()
                 .AddScoped<ISessionRepository, SessionRepository>()
+                .AddTransient<ConsoleAppRunner>()
                 .AddTransient<AnalyzeFileUseCase>()
                 .AddTransient<AnalyzeFolderUseCase>();
 
