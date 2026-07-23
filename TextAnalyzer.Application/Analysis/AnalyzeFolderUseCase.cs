@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
 using TextAnalyzer.Application.Models;
 using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Application.Mappers;
@@ -14,23 +15,28 @@ public class AnalyzeFolderUseCase
     private readonly ITextAnalyzerService _analyzerService;
     private readonly IFileAnalysisResultWriter _resultWriter;
     private readonly ISessionRepository _sessionRepository;
+    private readonly ILogger<AnalyzeFolderUseCase> _logger;
 
     public AnalyzeFolderUseCase(
         IDirectoryReader directoryReader,
         IFileReader fileReader,
         ITextAnalyzerService analyzerService,
         IFileAnalysisResultWriter resultWriter,
-        ISessionRepository sessionRepository)
+        ISessionRepository sessionRepository,
+        ILogger<AnalyzeFolderUseCase> logger)
     {
         _directoryReader = directoryReader;
         _fileReader = fileReader;
         _analyzerService = analyzerService;
         _resultWriter = resultWriter;
         _sessionRepository = sessionRepository;
+        _logger = logger;
     }
 
     public async Task<AnalyzeFolderResponse> Execute(string folderPath, CancellationToken ct = default)
     {
+        _logger.LogInformation("Started analysis for folder: {FolderPath}", folderPath);
+
         var startedAt = DateTime.UtcNow;
         var filePaths = _directoryReader.GetTextFiles(folderPath);
         var results = new ConcurrentBag<FileAnalysisResult>();
@@ -55,14 +61,17 @@ public class AnalyzeFolderUseCase
             }
             catch (UnauthorizedAccessException ex)
             {
+                _logger.LogError(ex, "Access denied while reading file: {FilePath}", filePath);
                 errors.Add($"Access denied to file: {filePath}. Skipping...");
             }
             catch (IOException ex)
             {
+                _logger.LogError(ex, "Could not read file: {FilePath}", filePath);
                 errors.Add($"[Warning] Could not read file {filePath}. It might be in use. Details: {ex.Message}");
             }
             catch(Exception ex)
             {
+                _logger.LogError(ex, "An unexpected error occurred while reading file: {FilePath}", filePath);
                 errors.Add($"[Warning] Could not read file {filePath}. Details: {ex.Message}");
             }
         });
@@ -97,6 +106,7 @@ public class AnalyzeFolderUseCase
 
         await _sessionRepository.AddAsync(dto.ToEntity());
 
+        _logger.LogInformation("Analysis finished for folder {FolderPath}. Total files processed: {FileCount}. Total errors: {ErrorCount}", folderPath, results.Count, errors.Count);
         return new AnalyzeFolderResponse(longestWordOverall, errors.ToArray());
     }
 }

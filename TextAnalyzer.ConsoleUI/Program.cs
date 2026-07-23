@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Serilog;
 using TextAnalyzer.Application.Analysis;
 using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Application.Models;
@@ -28,13 +29,24 @@ class Program
             .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
             .Build();
 
+        string connectionString = configuration.GetConnectionString("DefaultConnection");
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Information()
+            .WriteTo.PostgreSQL(
+                connectionString,
+                tableName: "Logs",
+                needAutoCreateTable: true)
+            .CreateLogger();
+
         // Ok to get it like this? Without creating a dedicated class for settings? I think so, since it's just a single setting
         string[] allowedExtensions = configuration.GetSection("ReaderSettings:AllowedExtensions").Get<string[]>();
 
         // DI Container
         var serviceProvider = new ServiceCollection()
+            .AddLogging(loggingBuilder => 
+                loggingBuilder.AddSerilog(dispose: true))
             .AddDbContext<TextAnalyzerDbContext>(options =>
-                options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")))
+                options.UseNpgsql(connectionString))
             .AddSingleton<IFileReader, LocalFileReader>()
             .AddSingleton<IDirectoryReader>(sp => new LocalDirectoryReader(allowedExtensions))
             .AddSingleton<ITextAnalyzerService, TextAnalyzerService>()
