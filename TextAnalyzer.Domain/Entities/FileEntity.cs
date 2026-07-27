@@ -12,6 +12,7 @@ namespace TextAnalyzer.Domain.Entities
         public Guid SessionId { get; set; }
         public SessionEntity Session { get; set; }
 
+        public string? FileHash { get; set; } // string? because we already have rows in the db without hash
         public string FilePath { get; set; }
 
         public ResultEntity Result { get; set; }

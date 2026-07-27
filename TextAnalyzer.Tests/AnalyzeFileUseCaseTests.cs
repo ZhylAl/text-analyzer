@@ -13,6 +13,7 @@ public class AnalyzeFileUseCaseTests
     private readonly Mock<ITextAnalyzerService> _mockAnalyzerService;
     private readonly Mock<ISessionRepository> _mockSessionRepository;
     private readonly Mock<ILogger<AnalyzeFileUseCase>> _mockLogger;
+    private readonly Mock<IHashService> _mockHashService;
     private readonly AnalyzeFileUseCase _useCase;
 
     public AnalyzeFileUseCaseTests()
@@ -21,12 +22,14 @@ public class AnalyzeFileUseCaseTests
         _mockAnalyzerService = new Mock<ITextAnalyzerService>();
         _mockSessionRepository = new Mock<ISessionRepository>();
         _mockLogger = new Mock<ILogger<AnalyzeFileUseCase>>();
+        _mockHashService = new Mock<IHashService>();
 
         _useCase = new AnalyzeFileUseCase(
             _mockFileReader.Object,
             _mockAnalyzerService.Object,
             _mockSessionRepository.Object,
-            _mockLogger.Object);
+            _mockLogger.Object,
+            _mockHashService.Object);
     }
 
     [Fact]
@@ -44,6 +47,11 @@ public class AnalyzeFileUseCaseTests
         _mockAnalyzerService
             .Setup(a => a.Analyze(fileContent))
             .Returns(expectedAnalysisResult);
+
+        _mockHashService
+            .Setup(h => h.ComputeSha256Hash(fileContent))
+            .Returns("testhash123");
+
 
         // Act
         var result = await _useCase.Execute(filePath, CancellationToken.None);
@@ -63,6 +71,52 @@ public class AnalyzeFileUseCaseTests
             entity.Results.First().CharCount == expectedAnalysisResult.CharCount &&
             entity.Results.First().WordCount == expectedAnalysisResult.WordCount
         )), Times.Once);
+
+        _mockAnalyzerService.Verify(a => a.Analyze(fileContent), Times.Once);
+
+    }
+
+    [Fact]
+    public async Task Execute_ShouldUseCachedResult_WhenHashExists()
+    {
+        // Arrange
+        string filePath = "test.txt";
+        string fileContent = "Hello test world";
+        var expectedAnalysisResult = new TextAnalysisResult(16, 3, 1, "world");
+
+        _mockFileReader
+            .Setup(f => f.ReadAllTextAsync(filePath, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(fileContent);
+
+        _mockSessionRepository
+            .Setup(r => r.GetCachedResultAsync("testhash123"))
+            .ReturnsAsync(expectedAnalysisResult);
+
+        _mockHashService
+            .Setup(h => h.ComputeSha256Hash(fileContent))
+            .Returns("testhash123");
+
+
+        // Act
+        var result = await _useCase.Execute(filePath, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(expectedAnalysisResult.CharCount, result.CharCount);
+        Assert.Equal(expectedAnalysisResult.WordCount, result.WordCount);
+        Assert.Equal(expectedAnalysisResult.LineCount, result.LineCount);
+        Assert.Equal(expectedAnalysisResult.LongestWord, result.LongestWord);
+
+        _mockSessionRepository.Verify(repo => repo.AddAsync(It.Is<SessionEntity>(entity =>
+            entity.ExecutionModeId == (int)ExecutionMode.SingleFile &&
+            entity.Files.Count == 1 &&
+            entity.Files.First().FilePath == filePath &&
+            entity.Results.Count == 1 &&
+            entity.Results.First().CharCount == expectedAnalysisResult.CharCount &&
+            entity.Results.First().WordCount == expectedAnalysisResult.WordCount
+        )), Times.Once);
+
+        _mockAnalyzerService.Verify(a => a.Analyze(fileContent), Times.Never);
 
     }
 

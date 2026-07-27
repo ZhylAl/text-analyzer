@@ -21,11 +21,12 @@ namespace TextAnalyzer.ConsoleUI
 
             services
                 .AddLogging(loggingBuilder => loggingBuilder.AddSerilog(dispose: true))
-                .AddDbContext<TextAnalyzerDbContext>(options => options.UseNpgsql(connectionString))
+                .AddDbContextFactory<TextAnalyzerDbContext>(options => options.UseNpgsql(connectionString))
                 .AddSingleton<IFileReader, LocalFileReader>()
                 .AddSingleton<IDirectoryReader>(sp => new LocalDirectoryReader(allowedExtensions))
                 .AddSingleton<ITextAnalyzerService, TextAnalyzerService>()
                 .AddSingleton<IFileAnalysisResultWriter, CsvFileAnalysisResultWriter>()
+                .AddSingleton<IHashService, HashService>()
                 .AddScoped<ISessionRepository, SessionRepository>()
                 .AddTransient<ConsoleAppRunner>()
                 .AddTransient<AnalyzeFileUseCase>()

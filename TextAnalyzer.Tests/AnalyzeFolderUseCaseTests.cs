@@ -16,6 +16,8 @@ public class AnalyzeFolderUseCaseTests
     private readonly Mock<IFileAnalysisResultWriter> _mockResultWriter;
     private readonly Mock<ISessionRepository> _mockSessionRepository;
     private readonly Mock<ILogger<AnalyzeFolderUseCase>> _mockLogger;
+    private readonly Mock<IHashService> _mockHashService;
+
     private readonly AnalyzeFolderUseCase _useCase;
 
     public AnalyzeFolderUseCaseTests()
@@ -26,6 +28,7 @@ public class AnalyzeFolderUseCaseTests
         _mockResultWriter = new Mock<IFileAnalysisResultWriter>();
         _mockSessionRepository = new Mock<ISessionRepository>();
         _mockLogger = new Mock<ILogger<AnalyzeFolderUseCase>>();
+        _mockHashService = new Mock<IHashService>();
 
         _useCase = new AnalyzeFolderUseCase(
             _mockDirectoryReader.Object,
@@ -33,7 +36,8 @@ public class AnalyzeFolderUseCaseTests
             _mockAnalyzerService.Object,
             _mockResultWriter.Object,
             _mockSessionRepository.Object,
-            _mockLogger.Object);
+            _mockLogger.Object,
+            _mockHashService.Object);
     }
 
     [Fact]
@@ -63,6 +67,9 @@ public class AnalyzeFolderUseCaseTests
         _mockResultWriter.Setup(w => w.WriteResults(It.IsAny<string>(), It.IsAny<IEnumerable<FileAnalysisExportDto>>()))
             .Callback<string, IEnumerable<FileAnalysisExportDto>>((path, dtos) => capturedExportDtos = dtos.ToList());
 
+        _mockHashService.Setup(h => h.ComputeSha256Hash("Hello world")).Returns("hash1");
+        _mockHashService.Setup(h => h.ComputeSha256Hash("Short text")).Returns("hash2");
+
         // Act
         AnalyzeFolderResponse result = await _useCase.Execute(folderPath);
 
@@ -81,6 +88,9 @@ public class AnalyzeFolderUseCaseTests
             entity.ExecutionModeId == (int)ExecutionMode.Folder &&
             entity.Results.Count == 2
         )), Times.Once);
+
+        _mockAnalyzerService.Verify(a => a.Analyze(It.IsAny<string>()), Times.Exactly(2));
+
     }
 
     [Fact]

@@ -21,7 +21,8 @@ namespace TextAnalyzer.Application.Mappers
             {
                 var fileEntity = new FileEntity
                 {
-                    FilePath = resultDto.FilePath
+                    FilePath = resultDto.FilePath,
+                    FileHash = resultDto.Hash 
                 };
 
                 var resultEntity = new ResultEntity

@@ -1,9 +1,10 @@
-using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
-using TextAnalyzer.Application.Models;
+using System.Collections.Concurrent;
 using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Application.Mappers;
-using TextAnalyzer.Domain.Models;
+using TextAnalyzer.Application.Models;
+using TextAnalyzer.Application.Services;
+using TextAnalyzer.Domain.Models;  
 
 namespace TextAnalyzer.Application.Analysis;
 
@@ -15,6 +16,7 @@ public class AnalyzeFolderUseCase
     private readonly IFileAnalysisResultWriter _resultWriter;
     private readonly ISessionRepository _sessionRepository;
     private readonly ILogger<AnalyzeFolderUseCase> _logger;
+    private readonly IHashService _hashService;
 
     public AnalyzeFolderUseCase(
         IDirectoryReader directoryReader,
@@ -22,7 +24,8 @@ public class AnalyzeFolderUseCase
         ITextAnalyzerService analyzerService,
         IFileAnalysisResultWriter resultWriter,
         ISessionRepository sessionRepository,
-        ILogger<AnalyzeFolderUseCase> logger)
+        ILogger<AnalyzeFolderUseCase> logger,
+        IHashService hashService)
     {
         _directoryReader = directoryReader;
         _fileReader = fileReader;
@@ -30,6 +33,7 @@ public class AnalyzeFolderUseCase
         _resultWriter = resultWriter;
         _sessionRepository = sessionRepository;
         _logger = logger;
+        _hashService = hashService;
     }
 
     public async Task<AnalyzeFolderResponse> Execute(string folderPath, CancellationToken ct = default)
@@ -54,9 +58,22 @@ public class AnalyzeFolderUseCase
             try
             {
                 string text = await _fileReader.ReadAllTextAsync(filePath, cancellationToken);
-                var analysisResult = _analyzerService.Analyze(text);
-                
-                results.Add(new FileAnalysisResult(filePath, analysisResult));
+                string fileHash = _hashService.ComputeSha256Hash(text);
+
+                TextAnalysisResult result;
+
+                var cachedResult = await _sessionRepository.GetCachedResultAsync(fileHash);
+                if (cachedResult != null)
+                {
+                    _logger.LogInformation("Found cached result for file: {FilePath}", filePath);
+                    result = cachedResult;
+                }
+                else
+                {
+                    result = _analyzerService.Analyze(text);
+                }
+
+                results.Add(new FileAnalysisResult(filePath, result, fileHash));
             }
             catch (UnauthorizedAccessException ex)
             {
