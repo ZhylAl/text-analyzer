@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using TextAnalyzer.Application.Analysis;
@@ -7,7 +6,6 @@ using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Application.Services;
 using TextAnalyzer.Domain.Models;
 using TextAnalyzer.Infrastructure.Data;
-using TextAnalyzer.Infrastructure.Data.Repositories;
 using TextAnalyzer.Infrastructure.Reader;
 
 namespace TextAnalyzer.IntegrationTests;
@@ -24,57 +22,58 @@ public class AnalyzeFileUseCaseIntegrationTests : IClassFixture<PostgreSqlDataba
     [Fact]
     public async Task Execute_ShouldAnalyzeRealFile_AndSaveToRealDb()
     {
-        var services = new ServiceCollection()
-                .AddDbContextFactory<TextAnalyzerDbContext>(opt => opt.UseNpgsql(_fixture.GetConnectionString()))
-                .BuildServiceProvider();
-        var factory = services.GetRequiredService<IDbContextFactory<TextAnalyzerDbContext>>();
+        var options = new DbContextOptionsBuilder<TextAnalyzerDbContext>()
+            .UseNpgsql(_fixture.GetConnectionString())
+            .Options;
 
-        using var setupContext = factory.CreateDbContext();
-        await setupContext.Database.EnsureCreatedAsync();
+        using var dbContext = new TextAnalyzerDbContext(options);
+        await dbContext.Database.EnsureCreatedAsync();
 
-        setupContext.Sessions.RemoveRange(setupContext.Sessions);
-        await setupContext.SaveChangesAsync();
+        dbContext.Sessions.RemoveRange(dbContext.Sessions);
+        dbContext.Files.RemoveRange(dbContext.Files);
+        await dbContext.SaveChangesAsync();
 
-        var repository = new SessionRepository(factory);
         var reader = new LocalFileReader();
         var analyzer = new TextAnalyzerService();
         var logger = NullLogger<AnalyzeFileUseCase>.Instance;
         var hashService = new HashService();
-        var useCase = new AnalyzeFileUseCase(reader, analyzer, repository, logger, hashService); 
+        var useCase = new AnalyzeFileUseCase(reader, analyzer, dbContext, logger, hashService); 
 
         using var tempFile = new TempFileHelper("Hello integration test world");
 
         await useCase.Execute(tempFile.FilePath, default);
 
+        var savedSession = await dbContext.Sessions
+            .Include(s => s.Files)
+            .ThenInclude(f => f.Result)
+            .FirstOrDefaultAsync();
 
-        var savedSession = await setupContext.Sessions.Include(s => s.Results).Include(s => s.Files).FirstOrDefaultAsync();
-        Assert.Equal(1, await setupContext.Sessions.CountAsync());
+        Assert.Equal(1, await dbContext.Sessions.CountAsync());
         Assert.NotNull(savedSession);
-        Assert.Single(savedSession.Results);
+        Assert.Single(savedSession.Files);
         Assert.Equal(1, savedSession.Files.Count());
-        Assert.Equal("integration", savedSession.Results.First().LongestWord);
+        Assert.Equal("integration", savedSession.Files.First().Result.LongestWord);
     } 
     
-    [Fact]
+    [Fact] 
     public async Task Execute_ShouldUseCache_OnSubsequentRuns()
     {
-        var services = new ServiceCollection()
-                .AddDbContextFactory<TextAnalyzerDbContext>(opt => opt.UseNpgsql(_fixture.GetConnectionString()))
-                .BuildServiceProvider();
-        var factory = services.GetRequiredService<IDbContextFactory<TextAnalyzerDbContext>>();
+        var options = new DbContextOptionsBuilder<TextAnalyzerDbContext>()
+            .UseNpgsql(_fixture.GetConnectionString())
+            .Options;
+        using var dbContext = new TextAnalyzerDbContext(options);
+        await dbContext.Database.EnsureCreatedAsync();
 
-        using var setupContext = factory.CreateDbContext();
-        await setupContext.Database.EnsureCreatedAsync();
+        dbContext.Sessions.RemoveRange(dbContext.Sessions);
+        dbContext.Files.RemoveRange(dbContext.Files);
+        await dbContext.SaveChangesAsync();
 
-        setupContext.Sessions.RemoveRange(setupContext.Sessions);
-        await setupContext.SaveChangesAsync();
-
-        var repository = new SessionRepository(factory);
         var reader = new LocalFileReader();
         var mockAnalyzer = new Mock<ITextAnalyzerService>();
         var logger = NullLogger<AnalyzeFileUseCase>.Instance;
         var hashService = new HashService();
-        var useCase = new AnalyzeFileUseCase(reader, mockAnalyzer.Object, repository, logger, hashService);
+
+        var useCase = new AnalyzeFileUseCase(reader, mockAnalyzer.Object, dbContext, logger, hashService);
 
         mockAnalyzer.Setup(a => a.Analyze(It.IsAny<string>()))
             .Returns(new TextAnalysisResult(1, 1, 1, "test"));

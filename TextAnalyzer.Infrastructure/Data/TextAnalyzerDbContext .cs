@@ -1,9 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Domain.Entities;
 
 namespace TextAnalyzer.Infrastructure.Data;
 
-public class TextAnalyzerDbContext : DbContext
+public class TextAnalyzerDbContext : DbContext, IApplicationDbContext
 {
     public TextAnalyzerDbContext(DbContextOptions<TextAnalyzerDbContext> options)
         : base(options)

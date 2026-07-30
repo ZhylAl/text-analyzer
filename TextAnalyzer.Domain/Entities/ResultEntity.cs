@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TextAnalyzer.Domain.Entities
@@ -7,10 +7,6 @@ namespace TextAnalyzer.Domain.Entities
     {
         [Key]
         public Guid Id { get; set; }
-
-        [ForeignKey(nameof(Session))]
-        public Guid SessionId { get; set; }
-        public SessionEntity Session { get; set; }
 
         [ForeignKey(nameof(File))]
         public Guid FileId { get; set; }

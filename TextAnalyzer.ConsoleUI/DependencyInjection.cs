@@ -6,7 +6,6 @@ using TextAnalyzer.Application.Analysis;
 using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Application.Services;
 using TextAnalyzer.Infrastructure.Data;
-using TextAnalyzer.Infrastructure.Data.Repositories;
 using TextAnalyzer.Infrastructure.Export;
 using TextAnalyzer.Infrastructure.Reader;
 
@@ -21,13 +20,13 @@ namespace TextAnalyzer.ConsoleUI
 
             services
                 .AddLogging(loggingBuilder => loggingBuilder.AddSerilog(dispose: true))
-                .AddDbContextFactory<TextAnalyzerDbContext>(options => options.UseNpgsql(connectionString))
+                .AddDbContext<TextAnalyzerDbContext>(options => options.UseNpgsql(connectionString))
+                .AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<TextAnalyzerDbContext>())
                 .AddSingleton<IFileReader, LocalFileReader>()
                 .AddSingleton<IDirectoryReader>(sp => new LocalDirectoryReader(allowedExtensions))
                 .AddSingleton<ITextAnalyzerService, TextAnalyzerService>()
                 .AddSingleton<IFileAnalysisResultWriter, CsvFileAnalysisResultWriter>()
                 .AddSingleton<IHashService, HashService>()
-                .AddScoped<ISessionRepository, SessionRepository>()
                 .AddTransient<ConsoleAppRunner>()
                 .AddTransient<AnalyzeFileUseCase>()
                 .AddTransient<AnalyzeFolderUseCase>();

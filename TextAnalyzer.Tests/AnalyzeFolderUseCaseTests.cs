@@ -1,10 +1,11 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 using TextAnalyzer.Application.Analysis;
 using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Application.Models;
-using TextAnalyzer.Domain.Entities;
 using TextAnalyzer.Domain.Models;
+using TextAnalyzer.Infrastructure.Data;
 
 namespace TextAnalyzer.Tests;
 
@@ -14,7 +15,7 @@ public class AnalyzeFolderUseCaseTests
     private readonly Mock<IFileReader> _mockFileReader;
     private readonly Mock<ITextAnalyzerService> _mockAnalyzerService;
     private readonly Mock<IFileAnalysisResultWriter> _mockResultWriter;
-    private readonly Mock<ISessionRepository> _mockSessionRepository;
+    private readonly TextAnalyzerDbContext _dbContext;
     private readonly Mock<ILogger<AnalyzeFolderUseCase>> _mockLogger;
     private readonly Mock<IHashService> _mockHashService;
 
@@ -26,16 +27,20 @@ public class AnalyzeFolderUseCaseTests
         _mockFileReader = new Mock<IFileReader>();
         _mockAnalyzerService = new Mock<ITextAnalyzerService>();
         _mockResultWriter = new Mock<IFileAnalysisResultWriter>();
-        _mockSessionRepository = new Mock<ISessionRepository>();
         _mockLogger = new Mock<ILogger<AnalyzeFolderUseCase>>();
         _mockHashService = new Mock<IHashService>();
+
+        var options = new DbContextOptionsBuilder<TextAnalyzerDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+        _dbContext = new TextAnalyzerDbContext(options);
 
         _useCase = new AnalyzeFolderUseCase(
             _mockDirectoryReader.Object,
             _mockFileReader.Object,
             _mockAnalyzerService.Object,
             _mockResultWriter.Object,
-            _mockSessionRepository.Object,
+            _dbContext,
             _mockLogger.Object,
             _mockHashService.Object);
     }
@@ -84,10 +89,10 @@ public class AnalyzeFolderUseCaseTests
         Assert.Contains(capturedExportDtos, d => d.FileName == "file1.txt" && d.LongestWord == "world");
         Assert.Contains(capturedExportDtos, d => d.FileName == "file2.txt" && d.LongestWord == "text");
 
-        _mockSessionRepository.Verify(repo => repo.AddAsync(It.Is<SessionEntity>(entity => 
-            entity.ExecutionModeId == (int)ExecutionMode.Folder &&
-            entity.Results.Count == 2
-        )), Times.Once);
+        var savedSession = await _dbContext.Sessions.Include(s => s.Files).SingleOrDefaultAsync();
+        Assert.NotNull(savedSession);
+        Assert.Equal((int)ExecutionMode.Folder, savedSession.ExecutionModeId);
+        Assert.Equal(2, savedSession.Files.Count); 
 
         _mockAnalyzerService.Verify(a => a.Analyze(It.IsAny<string>()), Times.Exactly(2));
 
@@ -106,10 +111,9 @@ public class AnalyzeFolderUseCaseTests
         // Assert
         Assert.Equal(string.Empty, result.LongestWordOverall);
         _mockResultWriter.Verify(w => w.WriteResults(It.IsAny<string>(), It.Is<IEnumerable<FileAnalysisExportDto>>(dtos => !dtos.Any())), Times.Once);
-        _mockSessionRepository.Verify(repo => repo.AddAsync(It.Is<SessionEntity>(entity => 
-            entity.ExecutionModeId == (int)ExecutionMode.Folder &&
-            !entity.Results.Any()
-        )), Times.Once);
+        var savedSession = await _dbContext.Sessions.Include(s => s.Files).SingleOrDefaultAsync();
+        Assert.NotNull(savedSession);
+        Assert.Empty(savedSession.Files);
     }
 
     [Fact]
@@ -129,6 +133,8 @@ public class AnalyzeFolderUseCaseTests
         _mockAnalyzerService.Setup(a => a.Analyze("good text"))
             .Returns(new TextAnalysisResult(9, 2, 1, "good"));
 
+        _mockHashService.Setup(h => h.ComputeSha256Hash("good text")).Returns("hash_good");
+
         IEnumerable<FileAnalysisExportDto> capturedExportDtos = null;
         _mockResultWriter.Setup(w => w.WriteResults(It.IsAny<string>(), It.IsAny<IEnumerable<FileAnalysisExportDto>>()))
             .Callback<string, IEnumerable<FileAnalysisExportDto>>((path, dtos) => capturedExportDtos = dtos.ToList());
@@ -141,10 +147,10 @@ public class AnalyzeFolderUseCaseTests
         Assert.NotNull(capturedExportDtos);
         Assert.Single(capturedExportDtos);
         Assert.Equal("good.txt", capturedExportDtos.First().FileName);
-        
-        _mockSessionRepository.Verify(repo => repo.AddAsync(It.Is<SessionEntity>(entity => 
-            entity.ExecutionModeId == (int)ExecutionMode.Folder &&
-            entity.Results.Count == 1
-        )), Times.Once);
+
+        var savedSession = await _dbContext.Sessions.Include(s => s.Files).SingleOrDefaultAsync();
+        Assert.NotNull(savedSession);
+        Assert.Single(savedSession.Files); 
+
     }
 }

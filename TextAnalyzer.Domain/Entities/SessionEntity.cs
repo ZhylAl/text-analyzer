@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TextAnalyzer.Domain.Entities
@@ -17,8 +17,6 @@ namespace TextAnalyzer.Domain.Entities
         public ExecutionModeEntity ExecutionMode { get; set; }
 
         public ICollection<FileEntity> Files { get; set; } = new List<FileEntity>();
-        public ICollection<ResultEntity> Results { get; set; } = new List<ResultEntity>();
-
     }
 }
 
