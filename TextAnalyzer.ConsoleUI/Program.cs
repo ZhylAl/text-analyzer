@@ -1,11 +1,13 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Serilog;
 using Spectre.Console;
 using System;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using TextAnalyzer.Application;
+using TextAnalyzer.Infrastructure;
 
 namespace TextAnalyzer.ConsoleUI;
 
@@ -13,17 +15,18 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        var configuration = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
-            .Build();
+        var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
+        {
+            Args = args,
+            ContentRootPath = AppDomain.CurrentDomain.BaseDirectory,
+            EnvironmentName = "Development"
+        });
 
-        configuration.ConfigureSerilog();
+        builder.Services.AddApplicationServices();
+        builder.Services.AddInfrastructureServices(builder.Configuration);
+        builder.Services.AddConsoleServices();
 
-        var serviceProvider = new ServiceCollection()
-            .AddApplicationServices(configuration)
-            .BuildServiceProvider();
+        var host = builder.Build();
 
         AnsiConsole.Write(new FigletText("Text Analyzer").Color(Color.Blue));
 
@@ -35,7 +38,9 @@ class Program
             cts.Cancel();
         };
 
-        var runner = serviceProvider.GetRequiredService<ConsoleAppRunner>();
+        using var scope = host.Services.CreateScope();
+
+        var runner = scope.ServiceProvider.GetRequiredService<ConsoleAppRunner>();
         await runner.RunAsync(cts.Token);
         Log.CloseAndFlush();
     }

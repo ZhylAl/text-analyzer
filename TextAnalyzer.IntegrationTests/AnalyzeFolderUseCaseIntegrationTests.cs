@@ -35,7 +35,11 @@ namespace TextAnalyzer.IntegrationTests
             dbContext.Files.RemoveRange(dbContext.Files);
             await dbContext.SaveChangesAsync();
 
-            var dirReader = new LocalDirectoryReader(new[] { ".txt" }); // Specify allowed extensions
+            var dirReader = new LocalDirectoryReader(
+                Microsoft.Extensions.Options.Options.Create(new TextAnalyzer.Infrastructure.Settings.ReaderSettings
+                {
+                    AllowedExtensions = new[] { ".txt" }
+                }));
             var fileReader = new LocalFileReader();
             var analyzer = new TextAnalyzerService();
             var writer = new CsvFileAnalysisResultWriter();
@@ -77,7 +81,12 @@ namespace TextAnalyzer.IntegrationTests
             dbContext.Files.RemoveRange(dbContext.Files);
             await dbContext.SaveChangesAsync();
 
-            var dirReader = new LocalDirectoryReader(new[] { ".txt" });
+            var dirReader = new LocalDirectoryReader(
+                Microsoft.Extensions.Options.Options.Create(new TextAnalyzer.Infrastructure.Settings.ReaderSettings
+                {
+                    AllowedExtensions = new[] { ".txt" }
+                }));
+
             var fileReader = new LocalFileReader();
             var mockAnalyzer = new Mock<ITextAnalyzerService>();
             var writer = new CsvFileAnalysisResultWriter();

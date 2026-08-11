@@ -1,59 +1,13 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Serilog;
-using TextAnalyzer.Application.Analysis;
-using TextAnalyzer.Application.Interfaces;
-using TextAnalyzer.Application.Services;
-using TextAnalyzer.Infrastructure.Data;
-using TextAnalyzer.Infrastructure.Export;
-using TextAnalyzer.Infrastructure.Messaging;
-using TextAnalyzer.Infrastructure.Reader;
 
 namespace TextAnalyzer.ConsoleUI
 {
     public static class DependencyInjection
     {
-        public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection AddConsoleServices(this IServiceCollection services)
         {
-            string[] allowedExtensions = configuration.GetSection("ReaderSettings:AllowedExtensions").Get<string[]>();
-            string connectionString = configuration.GetConnectionString("DefaultConnection");
-
-            services
-                .AddLogging(loggingBuilder => loggingBuilder.AddSerilog(dispose: true))
-                .AddSingleton<IConfiguration>(configuration)
-                .AddDbContext<TextAnalyzerDbContext>(options => options.UseNpgsql(connectionString))
-                .AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<TextAnalyzerDbContext>())
-                .AddSingleton<IFileReader, LocalFileReader>()
-                .AddSingleton<IDirectoryReader>(sp => new LocalDirectoryReader(allowedExtensions))
-                .AddSingleton<ITextAnalyzerService, TextAnalyzerService>()
-                .AddSingleton<IFileAnalysisResultWriter, CsvFileAnalysisResultWriter>()
-                .AddSingleton<IHashService, HashService>()
-                .AddSingleton<IMessageProducer, RabbitMqProducer>()
-                .AddTransient<ConsoleAppRunner>()
-                .AddTransient<AnalyzeFileUseCase>()
-                .AddTransient<AnalyzeFolderUseCase>()
-                .AddTransient<EnqueueAnalysisTasksUseCase>();
-
-            services.AddOptions<RabbitMqSettings>()
-                .BindConfiguration(RabbitMqSettings.SectionName)
-                .ValidateDataAnnotations()
-                .ValidateOnStart();
-
+            services.AddTransient<ConsoleAppRunner>();
             return services;
-        }
-
-        public static void ConfigureSerilog(this IConfiguration configuration)
-        {
-            string connectionString = configuration.GetConnectionString("DefaultConnection");
-
-            Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Information()
-                .WriteTo.PostgreSQL(
-                    connectionString,
-                    tableName: "Logs",
-                    needAutoCreateTable: true)
-                .CreateLogger();
         }
     }
 }

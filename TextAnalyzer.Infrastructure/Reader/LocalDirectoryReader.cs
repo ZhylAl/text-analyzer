@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Options;
 using TextAnalyzer.Application.Interfaces;
+using TextAnalyzer.Infrastructure.Settings;
 
 namespace TextAnalyzer.Infrastructure.Reader;
 
@@ -6,9 +8,9 @@ public class LocalDirectoryReader : IDirectoryReader
 {
     private readonly string[] _allowedExtensions;
 
-    public LocalDirectoryReader(string[] allowedExtensions)
+    public LocalDirectoryReader(IOptions<ReaderSettings> options)
     {
-        _allowedExtensions = allowedExtensions;
+        _allowedExtensions = options.Value.AllowedExtensions;
     }
 
     public IEnumerable<string> GetTextFiles(string directoryPath)

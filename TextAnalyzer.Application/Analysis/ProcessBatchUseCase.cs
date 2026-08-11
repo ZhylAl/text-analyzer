@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
@@ -33,7 +33,7 @@ namespace TextAnalyzer.Application.Analysis
 
         public async Task ExecuteAsync(FileBatchAnalysisMessage message, CancellationToken ct = default)
         {
-            _logger.LogInformation("Starting to process batch of {Count} files for Session {SessionId}", message.FilePaths.Count(), message.SessionId);
+            _logger.LogInformation("Starting to process batch of {Count} files for Session {SessionId}. Starts with: {FirstFile}", message.FilePaths.Count(), message.SessionId, message.FilePaths.FirstOrDefault());
 
             var results = new ConcurrentBag<FileAnalysisResult>();
             var fileData = new ConcurrentBag<(string Path, string Hash, string Text)>();
@@ -143,6 +143,7 @@ namespace TextAnalyzer.Application.Analysis
                             LongestWord = analysisResult.LongestWord
                         }
                     };
+                    _dbContext.Files.Add(newFile);
                     session.Files.Add(newFile);
                 }
             }

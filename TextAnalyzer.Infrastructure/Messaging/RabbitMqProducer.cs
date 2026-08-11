@@ -1,7 +1,8 @@
-﻿using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Application.Models;
+using TextAnalyzer.Infrastructure.Settings;
 
 namespace TextAnalyzer.Infrastructure.Messaging;
 
@@ -16,7 +17,7 @@ public class RabbitMqProducer : IMessageProducer
     {
         var settings = options.Value;
         _queueName = settings.QueueName;
-        _factory = new ConnectionFactory { HostName = settings.HostName };
+        _factory = new ConnectionFactory { Uri = new Uri(settings.ConnectionString) };
     }
 
     private async Task<IConnection> GetConnectionAsync(CancellationToken ct)
