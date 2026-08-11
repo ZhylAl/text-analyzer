@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using Spectre.Console;
 using System.Threading;
@@ -12,11 +13,13 @@ namespace TextAnalyzer.ConsoleUI
     {
         private readonly AnalyzeFileUseCase _analyzeFileUseCase;
         private readonly AnalyzeFolderUseCase _analyzeFolderUseCase;
+        private readonly EnqueueAnalysisTasksUseCase _enqueueAnalysisTasksUseCase;
 
-        public ConsoleAppRunner(AnalyzeFileUseCase analyzeFileUseCase, AnalyzeFolderUseCase analyzeFolderUseCase)
+        public ConsoleAppRunner(AnalyzeFileUseCase analyzeFileUseCase, AnalyzeFolderUseCase analyzeFolderUseCase, EnqueueAnalysisTasksUseCase enqueueAnalysisTasksUseCase)
         {
             _analyzeFileUseCase = analyzeFileUseCase;
             _analyzeFolderUseCase = analyzeFolderUseCase;
+            _enqueueAnalysisTasksUseCase = enqueueAnalysisTasksUseCase;
         }
 
         public async Task RunAsync(CancellationToken ct)
@@ -25,7 +28,7 @@ namespace TextAnalyzer.ConsoleUI
                 new SelectionPrompt<string>()
                     .Title("What would you like to do?")
                     .PageSize(10)
-                    .AddChoices(new[] { "Analyze a single file", "Analyze a folder", "Exit" }));
+                    .AddChoices(new[] { "Analyze a single file", "Analyze a folder", "Analyze folder (Distributed / RabbitMQ)","Exit" }));
 
             try
             {
@@ -36,6 +39,10 @@ namespace TextAnalyzer.ConsoleUI
                 else if (choice == "Analyze a folder")
                 {
                     await AnalyzeFolder(ct);
+                }
+                else if (choice == "Analyze folder (Distributed / RabbitMQ)")
+                {
+                    await AnalyzeFolderDistributed(ct);
                 }
             }
             catch (OperationCanceledException)
@@ -73,7 +80,7 @@ namespace TextAnalyzer.ConsoleUI
                     .Header("[blue]Analysis Results[/]")
                     .BorderColor(Color.Blue));
         }
-
+        
         private async Task AnalyzeFolder(CancellationToken ct)
         {
             string folderPath = AnsiConsole.Ask<string>("Enter the path to the folder:").Trim('"');
@@ -96,6 +103,28 @@ namespace TextAnalyzer.ConsoleUI
                     AnsiConsole.MarkupLine($"[yellow]{error}[/]");
                 }
             }
+        }
+
+        private async Task AnalyzeFolderDistributed(CancellationToken ct)
+        {
+            string folderPath = AnsiConsole.Ask<string>("Enter the path to the folder:").Trim('"');
+
+            var files = Directory.GetFiles(folderPath, "*.txt", SearchOption.AllDirectories)
+                .Where(f => !f.Equals("results.csv", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            Guid sessionId = Guid.Empty;
+
+            await AnsiConsole.Status()
+                .Spinner(Spinner.Known.Dots)
+                .StartAsync("Analyzing folder and generating CSV...", async ctx =>
+                {
+                    sessionId = await _enqueueAnalysisTasksUseCase.ExecuteAsync(files, ct);
+                });
+
+            AnsiConsole.MarkupLine($"\n[bold green]Success![/] Successfully queued [yellow]{files.Count}[/] files for distributed analysis.");
+            AnsiConsole.MarkupLine($"[blue]Session ID:[/] [bold]{sessionId}[/]");
+            AnsiConsole.MarkupLine("[grey]Workers will process these files in the background. The results will be saved to the database.[/]");
         }
     }
 }

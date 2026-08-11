@@ -9,4 +9,5 @@
   <Project Path="TextAnalyzer.Infrastructure/TextAnalyzer.Infrastructure.csproj" />
   <Project Path="TextAnalyzer.IntegrationTests/TextAnalyzer.IntegrationTests.csproj" Id="6fba7c84-a31a-4681-82c1-eb9fc3de9934" />
   <Project Path="TextAnalyzer.Tests/TextAnalyzer.Tests.csproj" />
+  <Project Path="TextAnalyzer.Worker/TextAnalyzer.Worker.csproj" Id="213b52b5-5838-4a7d-a22a-7b470c036ed4" />
 </Solution>

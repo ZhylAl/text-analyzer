@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 using Spectre.Console;
 using System;
 using System.IO;
@@ -36,5 +37,6 @@ class Program
 
         var runner = serviceProvider.GetRequiredService<ConsoleAppRunner>();
         await runner.RunAsync(cts.Token);
+        Log.CloseAndFlush();
     }
 }

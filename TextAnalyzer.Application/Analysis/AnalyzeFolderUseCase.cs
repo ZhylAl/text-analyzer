@@ -54,10 +54,10 @@ public class AnalyzeFolderUseCase
             CancellationToken = ct
         };
 
-        await Parallel.ForEachAsync(filePaths, parallelOptions, async (filePath, token) => {
+        await Parallel.ForEachAsync(filePaths, parallelOptions, async (filePath, ct) => {
             try
             {
-                string text = await _fileReader.ReadAllTextAsync(filePath, token);
+                string text = await _fileReader.ReadAllTextAsync(filePath, ct);
                 string hash = _hashService.ComputeSha256Hash(text);
                 fileData.Add((filePath, hash, text));
             }
@@ -92,7 +92,7 @@ public class AnalyzeFolderUseCase
             .GroupBy(f => f.FileHash)
             .ToDictionary(g => g.Key, g => g.First());
 
-        await Parallel.ForEachAsync(fileData, parallelOptions, async (data, cancellationToken) =>
+        await Parallel.ForEachAsync(fileData, parallelOptions, async (data, ct) =>
         {
             try
             {
@@ -145,7 +145,6 @@ public class AnalyzeFolderUseCase
         {
             Id = Guid.NewGuid(),
             StartedAt = startedAt,
-            FinishedAt = DateTime.UtcNow,
             ExecutionModeId = (int)ExecutionMode.Folder,
             Files = new List<FileEntity>()
         };
@@ -178,6 +177,7 @@ public class AnalyzeFolderUseCase
             }
         }
 
+        session.FinishedAt = DateTime.UtcNow;
         _dbContext.Sessions.Add(session);
         await _dbContext.SaveChangesAsync(ct);
 

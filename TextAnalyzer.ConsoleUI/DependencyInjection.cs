@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
@@ -7,6 +7,7 @@ using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Application.Services;
 using TextAnalyzer.Infrastructure.Data;
 using TextAnalyzer.Infrastructure.Export;
+using TextAnalyzer.Infrastructure.Messaging;
 using TextAnalyzer.Infrastructure.Reader;
 
 namespace TextAnalyzer.ConsoleUI
@@ -20,6 +21,7 @@ namespace TextAnalyzer.ConsoleUI
 
             services
                 .AddLogging(loggingBuilder => loggingBuilder.AddSerilog(dispose: true))
+                .AddSingleton<IConfiguration>(configuration)
                 .AddDbContext<TextAnalyzerDbContext>(options => options.UseNpgsql(connectionString))
                 .AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<TextAnalyzerDbContext>())
                 .AddSingleton<IFileReader, LocalFileReader>()
@@ -27,9 +29,16 @@ namespace TextAnalyzer.ConsoleUI
                 .AddSingleton<ITextAnalyzerService, TextAnalyzerService>()
                 .AddSingleton<IFileAnalysisResultWriter, CsvFileAnalysisResultWriter>()
                 .AddSingleton<IHashService, HashService>()
+                .AddSingleton<IMessageProducer, RabbitMqProducer>()
                 .AddTransient<ConsoleAppRunner>()
                 .AddTransient<AnalyzeFileUseCase>()
-                .AddTransient<AnalyzeFolderUseCase>();
+                .AddTransient<AnalyzeFolderUseCase>()
+                .AddTransient<EnqueueAnalysisTasksUseCase>();
+
+            services.AddOptions<RabbitMqSettings>()
+                .BindConfiguration(RabbitMqSettings.SectionName)
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
 
             return services;
         }
