@@ -11,4 +11,7 @@ public class RabbitMqSettings
 
     [Required]
     public string QueueName { get; set; } = null!;
+
+    public int MaxRetries { get; set; } = 10;
+    public int RetryIntervalMs { get; set; } = 5000;
 }

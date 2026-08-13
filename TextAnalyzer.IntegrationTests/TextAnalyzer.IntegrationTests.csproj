@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\TextAnalyzer.Application\TextAnalyzer.Application.csproj" />
     <ProjectReference Include="..\TextAnalyzer.Infrastructure\TextAnalyzer.Infrastructure.csproj" />
+    <ProjectReference Include="..\TextAnalyzer.Worker\TextAnalyzer.Worker.csproj" />
   </ItemGroup>
 
   <ItemGroup>
