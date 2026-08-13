@@ -1,6 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using RabbitMQ.Client;
 using Serilog;
 using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Infrastructure.Data;
@@ -28,6 +30,16 @@ namespace TextAnalyzer.Infrastructure
                 .BindConfiguration(ReaderSettings.SectionName)
                 .ValidateDataAnnotations();
 
+            services.AddSingleton<IConnectionFactory>(sp =>
+                {
+                    var rabbitSettings = sp.GetRequiredService<IOptions<RabbitMqSettings>>().Value;
+
+                    return new ConnectionFactory
+                    {
+                        Uri = new Uri(rabbitSettings.ConnectionString)
+                    };
+                });
+
             services
                 .AddSerilog((sp, loggerConfiguration) =>
                 {
@@ -35,7 +47,6 @@ namespace TextAnalyzer.Infrastructure
 
                     loggerConfiguration
                         .MinimumLevel.Information()
-                        .WriteTo.Console()
                         .WriteTo.PostgreSQL(
                             connectionString: dbSettings.DefaultConnection,
                             tableName: "Logs",

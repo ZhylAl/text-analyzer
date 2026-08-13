@@ -28,7 +28,7 @@ namespace TextAnalyzer.ConsoleUI
                 new SelectionPrompt<string>()
                     .Title("What would you like to do?")
                     .PageSize(10)
-                    .AddChoices(new[] { "Analyze a single file", "Analyze a folder", "Analyze folder (Distributed / RabbitMQ)","Exit" }));
+                    .AddChoices(new[] { "Analyze a single file", "Analyze a folder", "Analyze folder (Distributed / RabbitMQ)", "Exit" }));
 
             try
             {
@@ -51,7 +51,7 @@ namespace TextAnalyzer.ConsoleUI
             }
             catch (Exception ex)
             {
-                AnsiConsole.WriteException(ex, ExceptionFormats.ShortenEverything);
+                AnsiConsole.MarkupLine($"\n[bold red]An error occurred:[/] {ex.Message}");
             }
         }
 
@@ -80,7 +80,7 @@ namespace TextAnalyzer.ConsoleUI
                     .Header("[blue]Analysis Results[/]")
                     .BorderColor(Color.Blue));
         }
-        
+
         private async Task AnalyzeFolder(CancellationToken ct)
         {
             string folderPath = AnsiConsole.Ask<string>("Enter the path to the folder:").Trim('"');
