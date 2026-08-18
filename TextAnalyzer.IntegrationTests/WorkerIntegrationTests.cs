@@ -18,30 +18,30 @@ public class WorkerIntegrationTests : IClassFixture<RabbitMqFixture>
     public async Task Worker_ShouldCreateQueuesAndExchanges_InRealRabbitMq()
     {
         // Arrange
-        var services = new ServiceCollection();
+        ServiceCollection services = new ServiceCollection();
 
         services.AddLogging();
 
-        var settings = new RabbitMqSettings { MaxRetries = 3, RetryIntervalMs = 100, QueueName = "integration-queue" };
+        RabbitMqSettings settings = new RabbitMqSettings { MaxRetries = 3, RetryIntervalMs = 100, QueueName = "integration-queue" };
         services.AddSingleton(Options.Create(settings));
 
-        var connectionFactory = new ConnectionFactory { Uri = new Uri(_fixture.GetConnectionString()) };
+        ConnectionFactory connectionFactory = new ConnectionFactory { Uri = new Uri(_fixture.GetConnectionString()) };
         services.AddSingleton<IConnectionFactory>(connectionFactory);
 
         services.AddTransient<TextAnalyzer.Worker.Worker>();
 
-        var provider = services.BuildServiceProvider();
-        var worker = provider.GetRequiredService<TextAnalyzer.Worker.Worker>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        Worker.Worker worker = provider.GetRequiredService<TextAnalyzer.Worker.Worker>();
 
         // Act
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        using CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
 
         await worker.StartAsync(cts.Token);
         await Task.Delay(500);
 
         // Assert
-        using var connection = await connectionFactory.CreateConnectionAsync();
-        using var channel = await connection.CreateChannelAsync();
+        using IConnection connection = await connectionFactory.CreateConnectionAsync();
+        using IChannel channel = await connection.CreateChannelAsync();
 
         await channel.QueueDeclarePassiveAsync("integration-queue");
         await channel.QueueDeclarePassiveAsync("my-dlq");

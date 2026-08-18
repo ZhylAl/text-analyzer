@@ -20,7 +20,7 @@ public class TextAnalyzerService : ITextAnalyzerService
         char[] punctuation = text.Where(char.IsPunctuation).Distinct().ToArray();
         char[] splitChars = punctuation.Concat(new[] { ' ', '\r', '\n', '\t' }).ToArray();
 
-        var words = text.Split(splitChars, StringSplitOptions.RemoveEmptyEntries);
+        string[] words = text.Split(splitChars, StringSplitOptions.RemoveEmptyEntries);
         int wordCount = words.Length;
 
         string longestWord = words.MaxBy(w => w.Length) ?? string.Empty;

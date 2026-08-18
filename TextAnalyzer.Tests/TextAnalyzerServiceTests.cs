@@ -1,4 +1,5 @@
 using TextAnalyzer.Application.Services;
+using TextAnalyzer.Domain.Models;
 
 namespace TextAnalyzer.Tests;
 
@@ -18,7 +19,7 @@ public class TextAnalyzerServiceTests
         string text = "Hello, world!";
 
         // Act
-        var result = _analyzerService.Analyze(text);
+        TextAnalysisResult result = _analyzerService.Analyze(text);
 
         // Assert
         Assert.Equal(13, result.CharCount);
@@ -34,7 +35,7 @@ public class TextAnalyzerServiceTests
         string text = "";
 
         // Act
-        var result = _analyzerService.Analyze(text);
+        TextAnalysisResult result = _analyzerService.Analyze(text);
 
         // Assert
         Assert.Equal(0, result.CharCount);
@@ -50,7 +51,7 @@ public class TextAnalyzerServiceTests
         string text = null;
 
         // Act
-        var result = _analyzerService.Analyze(text);
+        TextAnalysisResult result = _analyzerService.Analyze(text);
 
         // Assert
         Assert.Equal(0, result.CharCount);
@@ -66,7 +67,7 @@ public class TextAnalyzerServiceTests
         string text = "!?,.:;";
 
         // Act
-        var result = _analyzerService.Analyze(text);
+        TextAnalysisResult result = _analyzerService.Analyze(text);
 
         // Assert
         Assert.Equal(6, result.CharCount);
@@ -82,7 +83,7 @@ public class TextAnalyzerServiceTests
         string text = "One  two   three"; // Lots of spaces between words
 
         // Act
-        var result = _analyzerService.Analyze(text);
+        TextAnalysisResult result = _analyzerService.Analyze(text);
 
         // Assert
         Assert.Equal(16, result.CharCount);
@@ -100,7 +101,7 @@ public class TextAnalyzerServiceTests
 three";
         text = text.Replace("\r\n", "\n"); // to have the same line separators on every OS
         // Act
-        var result = _analyzerService.Analyze(text);
+        TextAnalysisResult result = _analyzerService.Analyze(text);
 
         // Assert
         Assert.Equal(17, result.CharCount);
@@ -124,7 +125,7 @@ Let's see if the analyzer handles it.";
         text = text.Replace("\r\n", "\n"); // to have the same line separators on every OS
 
         // Act
-        var result = _analyzerService.Analyze(text);
+        TextAnalysisResult result = _analyzerService.Analyze(text);
 
         // Assert
         Assert.Equal(311, result.CharCount);

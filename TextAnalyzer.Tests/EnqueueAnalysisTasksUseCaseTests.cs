@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Moq;
 using TextAnalyzer.Application.Analysis;
 using TextAnalyzer.Application.Interfaces;
+using TextAnalyzer.Domain.Entities;
 using TextAnalyzer.Infrastructure.Data;
 
 namespace TextAnalyzer.Tests;
@@ -14,7 +15,7 @@ public class EnqueueAnalysisTasksUseCaseTests
 
     public EnqueueAnalysisTasksUseCaseTests()
     {
-        var options = new DbContextOptionsBuilder<TextAnalyzerDbContext>()
+        DbContextOptions<TextAnalyzerDbContext> options = new DbContextOptionsBuilder<TextAnalyzerDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
         _dbContext = new TextAnalyzerDbContext(options);
@@ -28,13 +29,13 @@ public class EnqueueAnalysisTasksUseCaseTests
     public async Task ExecuteAsync_ShouldCreateSessionAndPublishMessagesInChunks()
     {
         // Arrange
-        var filePaths = Enumerable.Range(1, 1200).Select(i => $"file{i}.txt").ToList();
+        List<string> filePaths = Enumerable.Range(1, 1200).Select(i => $"file{i}.txt").ToList();
 
         // Act
-        var sessionId = await _useCase.ExecuteAsync(filePaths, CancellationToken.None);
+        Guid sessionId = await _useCase.ExecuteAsync(filePaths, CancellationToken.None);
 
         // Assert
-        var savedSession = await _dbContext.Sessions.SingleOrDefaultAsync(s => s.Id == sessionId);
+        SessionEntity? savedSession = await _dbContext.Sessions.SingleOrDefaultAsync(s => s.Id == sessionId);
         Assert.NotNull(savedSession);
         Assert.Equal((int)ExecutionMode.Folder, savedSession.ExecutionModeId);
 

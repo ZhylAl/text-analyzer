@@ -14,23 +14,23 @@ public class WorkerTests
     public async Task ExecuteAsync_ShouldThrowInvalidOperationException_WhenMaxRetriesReached()
     {
         // Arrange
-        var settings = new RabbitMqSettings
+        RabbitMqSettings settings = new RabbitMqSettings
         {
             MaxRetries = 3,
             RetryIntervalMs = 1,
             QueueName = "test-queue"
         };
 
-        var optionsMock = new Mock<IOptions<RabbitMqSettings>>();
+        Mock<IOptions<RabbitMqSettings>> optionsMock = new Mock<IOptions<RabbitMqSettings>>();
         optionsMock.Setup(o => o.Value).Returns(settings);
 
-        var loggerMock = new Mock<ILogger<TextAnalyzer.Worker.Worker>>();
-        var serviceProviderMock = new Mock<IServiceProvider>();
+        Mock<ILogger<Worker.Worker>> loggerMock = new Mock<ILogger<TextAnalyzer.Worker.Worker>>();
+        Mock<IServiceProvider> serviceProviderMock = new Mock<IServiceProvider>();
 
-        var connectionFactoryMock = new Mock<IConnectionFactory>();
+        Mock<IConnectionFactory> connectionFactoryMock = new Mock<IConnectionFactory>();
         connectionFactoryMock.Setup(x => x.CreateConnectionAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new Exception("Network down"));
 
-        var worker = new TestableWorker(serviceProviderMock.Object, optionsMock.Object, loggerMock.Object, connectionFactoryMock.Object);
+        TestableWorker worker = new TestableWorker(serviceProviderMock.Object, optionsMock.Object, loggerMock.Object, connectionFactoryMock.Object);
 
         await Assert.ThrowsAsync<InvalidOperationException>(async () => await worker.RunExecuteAsyncForTest(CancellationToken.None));
     }

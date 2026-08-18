@@ -27,14 +27,14 @@ public class AnalyzeFileUseCase
     {
         _logger.LogInformation("Starting analysis for file: {FilePath}", filePath);
 
-        var startedAt = DateTime.UtcNow;
+        DateTime startedAt = DateTime.UtcNow;
         string text = await _fileReader.ReadAllTextAsync(filePath, ct);
 
         string fileHash = _hashService.ComputeSha256Hash(text);
 
         TextAnalysisResult result;
 
-        var cachedFile = await _dbContext.Files
+        FileEntity? cachedFile = await _dbContext.Files
             .Include(f => f.Result) 
             .FirstOrDefaultAsync(f => f.FileHash == fileHash, ct);  
 
@@ -53,7 +53,7 @@ public class AnalyzeFileUseCase
              result = _analyzerService.Analyze(text);
         }
 
-        var session = new SessionEntity
+        SessionEntity session = new SessionEntity
         {
             Id = Guid.NewGuid(),
             StartedAt = startedAt,
@@ -68,7 +68,7 @@ public class AnalyzeFileUseCase
         }
         else
         {
-            var newFile = new FileEntity
+            FileEntity newFile = new FileEntity
             {
                 Id = Guid.NewGuid(),
                 FilePath = filePath,

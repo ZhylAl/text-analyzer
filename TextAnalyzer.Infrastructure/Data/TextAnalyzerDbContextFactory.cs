@@ -8,16 +8,16 @@ public class TextAnalyzerDbContextFactory : IDesignTimeDbContextFactory<TextAnal
 {
     public TextAnalyzerDbContext CreateDbContext(string[] args)
     {
-        var basePath = Path.Combine(Directory.GetCurrentDirectory(), "../TextAnalyzer.ConsoleUI");
+        string basePath = Path.Combine(Directory.GetCurrentDirectory(), "../TextAnalyzer.ConsoleUI");
 
-        var configuration = new ConfigurationBuilder()
+        IConfigurationRoot configuration = new ConfigurationBuilder()
             .SetBasePath(basePath)
             .AddJsonFile("appsettings.json", optional: false)
             .AddJsonFile("appsettings.Development.json", optional: true)
             .Build();
 
-        var builder = new DbContextOptionsBuilder<TextAnalyzerDbContext>();
-        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        DbContextOptionsBuilder<TextAnalyzerDbContext> builder = new DbContextOptionsBuilder<TextAnalyzerDbContext>();
+        string? connectionString = configuration.GetConnectionString("DefaultConnection");
 
         builder.UseNpgsql(connectionString);
 

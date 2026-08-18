@@ -16,7 +16,7 @@ namespace TextAnalyzer.Application.Analysis
 
         public async Task<Guid> ExecuteAsync(IEnumerable<string> filePaths, CancellationToken ct = default)
         {
-            var session = new SessionEntity
+            SessionEntity session = new SessionEntity
             {
                 Id = Guid.NewGuid(),
                 StartedAt = DateTime.UtcNow,
@@ -26,9 +26,9 @@ namespace TextAnalyzer.Application.Analysis
             _dbContext.Sessions.Add(session);
             await _dbContext.SaveChangesAsync(ct);
 
-            var chunks = filePaths.Chunk(500);
+            IEnumerable<string[]> chunks = filePaths.Chunk(500);
 
-            var parallelOptions = new ParallelOptions
+            ParallelOptions parallelOptions = new ParallelOptions
             {
                 MaxDegreeOfParallelism = Environment.ProcessorCount,
                 CancellationToken = ct

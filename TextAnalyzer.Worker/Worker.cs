@@ -15,6 +15,9 @@ namespace TextAnalyzer.Worker
         private readonly ILogger<Worker> _logger;
         private readonly IConnectionFactory _connectionFactory;
 
+        private const string DeadLetterExchange = "my-dlx";
+        private const string DeadLetterQueue = "my-dlq";
+
         public Worker(IServiceProvider serviceProvider, IOptions<RabbitMqSettings> options, ILogger<Worker> logger, IConnectionFactory connectionFactory)
         {
             _serviceProvider = serviceProvider;
@@ -32,8 +35,8 @@ namespace TextAnalyzer.Worker
             {
                 try
                 {
-                    using var connection = await _connectionFactory.CreateConnectionAsync(stoppingToken);
-                    using var channel = await connection.CreateChannelAsync(cancellationToken: stoppingToken);
+                    using IConnection connection = await _connectionFactory.CreateConnectionAsync(stoppingToken);
+                    using IChannel channel = await connection.CreateChannelAsync(cancellationToken: stoppingToken);
 
                     await channel.QueueDeclareAsync(
                         _settings.QueueName,
@@ -42,34 +45,34 @@ namespace TextAnalyzer.Worker
                         autoDelete: false,
                         arguments: new Dictionary<string, object?>
                         {
-                            { "x-dead-letter-exchange", "my-dlx" }
+                            { "x-dead-letter-exchange", DeadLetterExchange }
                         },
                         cancellationToken: stoppingToken);
 
-                    await channel.ExchangeDeclareAsync("my-dlx", ExchangeType.Fanout, durable: true, cancellationToken: stoppingToken);
-                    await channel.QueueDeclareAsync("my-dlq", durable: true, exclusive: false, autoDelete: false, cancellationToken: stoppingToken);
-                    await channel.QueueBindAsync(queue: "my-dlq", exchange: "my-dlx", routingKey: "", cancellationToken: stoppingToken);
+                    await channel.ExchangeDeclareAsync(DeadLetterExchange, ExchangeType.Fanout, durable: true, cancellationToken: stoppingToken);
+                    await channel.QueueDeclareAsync(DeadLetterQueue, durable: true, exclusive: false, autoDelete: false, cancellationToken: stoppingToken);
+                    await channel.QueueBindAsync(DeadLetterQueue, exchange: DeadLetterExchange, routingKey: "", cancellationToken: stoppingToken);
 
                     _logger.LogInformation("Worker is waiting for messages from RabbitMQ...");
 
                     // Ensure fair dispatch: one message at a time per worker
                     await channel.BasicQosAsync(0, 1, false, cancellationToken: stoppingToken);
 
-                    var consumer = new AsyncEventingBasicConsumer(channel);
+                    AsyncEventingBasicConsumer consumer = new AsyncEventingBasicConsumer(channel);
 
-                    consumer.ReceivedAsync += async (model, ea) =>
+                    consumer.ReceivedAsync += async (model, ea) => 
                     {
                         try
                         {
-                            var body = ea.Body.ToArray();
-                            var message = JsonSerializer.Deserialize<FileBatchAnalysisMessage>(body);
+                            byte[] body = ea.Body.ToArray();
+                            FileBatchAnalysisMessage? message = JsonSerializer.Deserialize<FileBatchAnalysisMessage>(body);
 
                             if (message != null)
                             {
                                 _logger.LogInformation("Received batch for session {SessionId}. First file: {FirstFile}", message.SessionId, message.FilePaths.FirstOrDefault());
 
-                                using var scope = _serviceProvider.CreateScope();
-                                var useCase = scope.ServiceProvider.GetRequiredService<ProcessBatchUseCase>();
+                                using IServiceScope scope = _serviceProvider.CreateScope();
+                                ProcessBatchUseCase useCase = scope.ServiceProvider.GetRequiredService<ProcessBatchUseCase>();
                                 await useCase.ExecuteAsync(message, stoppingToken);
 
                                 await channel.BasicAckAsync(deliveryTag: ea.DeliveryTag, multiple: false, cancellationToken: stoppingToken);

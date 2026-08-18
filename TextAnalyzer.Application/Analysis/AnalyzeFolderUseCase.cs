@@ -40,15 +40,15 @@ public class AnalyzeFolderUseCase
     {
         _logger.LogInformation("Started analysis for folder: {FolderPath}", folderPath);
 
-        var startedAt = DateTime.UtcNow;
-        var filePaths = _directoryReader.GetTextFiles(folderPath);
-        var results = new ConcurrentBag<FileAnalysisResult>();
-        var errors = new ConcurrentBag<string>();
-        var fileData = new ConcurrentBag<(string Path, string Hash, string Text)>();
+        DateTime startedAt = DateTime.UtcNow;
+        IEnumerable<string> filePaths = _directoryReader.GetTextFiles(folderPath);
+        ConcurrentBag<FileAnalysisResult> results = new ConcurrentBag<FileAnalysisResult>();
+        ConcurrentBag<string> errors = new ConcurrentBag<string>();
+        ConcurrentBag<(string Path, string Hash, string Text)> fileData = new ConcurrentBag<(string Path, string Hash, string Text)>();
         
         // Used Parallel.ForEach because slicing strings and counting 
         // characters is mainly CPU work and underlying methods are synchronous
-        var parallelOptions = new ParallelOptions
+        ParallelOptions parallelOptions = new ParallelOptions
         {
             MaxDegreeOfParallelism = Environment.ProcessorCount,
             CancellationToken = ct
@@ -78,8 +78,8 @@ public class AnalyzeFolderUseCase
             }
         });
 
-        var allHashes = fileData.Select(x => x.Hash).ToList();
-        var cachedFilesList = await _dbContext.Files
+        List<string> allHashes = fileData.Select(x => x.Hash).ToList();
+        List<FileEntity> cachedFilesList = await _dbContext.Files
             .Include(f => f.Result)
             .Where(f => allHashes.Contains(f.FileHash))
             .ToListAsync(ct);
@@ -88,7 +88,7 @@ public class AnalyzeFolderUseCase
         // This acts as a defensive mechanism against legacy duplicate records 
         // in the database that share the same FileHash, preventing ArgumentException 
         // (duplicate keys) during ToDictionary execution.
-        var cachedFiles = cachedFilesList
+        Dictionary<string?, FileEntity> cachedFiles = cachedFilesList
             .GroupBy(f => f.FileHash)
             .ToDictionary(g => g.Key, g => g.First());
 
@@ -98,7 +98,7 @@ public class AnalyzeFolderUseCase
             {
                 TextAnalysisResult result;
 
-                if (cachedFiles.TryGetValue(data.Hash, out var cachedEntity))
+                if (cachedFiles.TryGetValue(data.Hash, out FileEntity? cachedEntity))
                 {
                     _logger.LogInformation("Found cached result for file: {FilePath}", data.Path);
                     result = new TextAnalysisResult(
@@ -123,7 +123,7 @@ public class AnalyzeFolderUseCase
         });
 
         // Map domain results to Export DTOs
-        var exportDtos = results.Select(r => new FileAnalysisExportDto(
+        List<FileAnalysisExportDto> exportDtos = results.Select(r => new FileAnalysisExportDto(
             Path.GetFileName(r.FilePath),
             r.FilePath,
             r.AnalysisResult.CharCount,
@@ -137,11 +137,11 @@ public class AnalyzeFolderUseCase
         _resultWriter.WriteResults(outputCsvPath, exportDtos);
 
         // Find and return the longest word overall
-        var longestWordOverall = exportDtos
+        string longestWordOverall = exportDtos
             .MaxBy(r => r.LongestWord.Length)?
             .LongestWord ?? string.Empty;
 
-        var session = new SessionEntity
+        SessionEntity session = new SessionEntity
         {
             Id = Guid.NewGuid(),
             StartedAt = startedAt,
@@ -149,17 +149,17 @@ public class AnalyzeFolderUseCase
             Files = new List<FileEntity>()
         };
 
-        foreach (var data in fileData)
+        foreach ((string Path, string Hash, string Text) data in fileData)
         {
-            if (cachedFiles.TryGetValue(data.Hash, out var existingFile))
+            if (cachedFiles.TryGetValue(data.Hash, out FileEntity? existingFile))
             {
                 session.Files.Add(existingFile);
             }
             else
             {
-                var analysisResult = results.First(r => r.Hash == data.Hash).AnalysisResult;
+                TextAnalysisResult analysisResult = results.First(r => r.Hash == data.Hash).AnalysisResult;
 
-                var newFile = new FileEntity
+                FileEntity newFile = new FileEntity
                 {
                     Id = Guid.NewGuid(),
                     FilePath = data.Path,

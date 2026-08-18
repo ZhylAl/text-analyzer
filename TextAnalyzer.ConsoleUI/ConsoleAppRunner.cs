@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Spectre.Console;
@@ -24,7 +25,7 @@ namespace TextAnalyzer.ConsoleUI
 
         public async Task RunAsync(CancellationToken ct)
         {
-            var choice = AnsiConsole.Prompt(
+            string choice = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title("What would you like to do?")
                     .PageSize(10)
@@ -66,7 +67,7 @@ namespace TextAnalyzer.ConsoleUI
                     result = await _analyzeFileUseCase.Execute(filePath, ct);
                 });
 
-            var table = new Table();
+            Table table = new Table();
             table.AddColumn("Metric");
             table.AddColumn("Value");
 
@@ -98,7 +99,7 @@ namespace TextAnalyzer.ConsoleUI
 
             if (response.Errors.Any())
             {
-                foreach (var error in response.Errors)
+                foreach (string error in response.Errors)
                 {
                     AnsiConsole.MarkupLine($"[yellow]{error}[/]");
                 }
@@ -109,7 +110,7 @@ namespace TextAnalyzer.ConsoleUI
         {
             string folderPath = AnsiConsole.Ask<string>("Enter the path to the folder:").Trim('"');
 
-            var files = Directory.GetFiles(folderPath, "*.txt", SearchOption.AllDirectories)
+            List<string> files = Directory.GetFiles(folderPath, "*.txt", SearchOption.AllDirectories)
                 .Where(f => !f.Equals("results.csv", StringComparison.OrdinalIgnoreCase))
                 .ToList();
 

@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
 using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Application.Models;
@@ -35,21 +34,36 @@ namespace TextAnalyzer.Application.Analysis
         {
             _logger.LogInformation("Starting to process batch of {Count} files for Session {SessionId}. Starts with: {FirstFile}", message.FilePaths.Count(), message.SessionId, message.FilePaths.FirstOrDefault());
 
-            var results = new ConcurrentBag<FileAnalysisResult>();
-            var fileData = new ConcurrentBag<(string Path, string Hash, string Text)>();
-
-            var parallelOptions = new ParallelOptions
+            
+            ParallelOptions parallelOptions = new ParallelOptions
             {
                 MaxDegreeOfParallelism = Environment.ProcessorCount,
                 CancellationToken = ct
             };
 
-            await Parallel.ForEachAsync(message.FilePaths, parallelOptions, async (filePath, token) =>
+            ConcurrentBag<(string Path, string Hash, string Text)> fileData = await ReadFilesAsync(message.FilePaths, parallelOptions);
+
+            Dictionary<string?, FileEntity> cachedFiles = await GetCachedFilesAsync(fileData, ct);
+
+            ConcurrentBag<FileAnalysisResult> results = await AnalyzeTextsAsync(fileData, cachedFiles, parallelOptions);
+
+            await SaveResultsToDatabaseAsync(message.SessionId, fileData, cachedFiles, results, ct);
+
+            _logger.LogInformation("Successfully processed batch of {Count} files for Session {SessionId}. Cache hits: {CacheHits}", message.FilePaths.Count(), message.SessionId, cachedFiles.Count);
+
+        }
+
+        private async Task<ConcurrentBag<(string Path, string Hash, string Text)>> ReadFilesAsync(
+            IEnumerable<string> filePaths, ParallelOptions parallelOptions)
+        {
+            ConcurrentBag<(string Path, string Hash, string Text)> fileData = new ConcurrentBag<(string Path, string Hash, string Text)>();
+
+            await Parallel.ForEachAsync(filePaths, parallelOptions, async (filePath, token) =>
             {
                 try
                 {
-                    var text = await _fileReader.ReadAllTextAsync(filePath, token);
-                    var hash = _hashService.ComputeSha256Hash(text);
+                    string text = await _fileReader.ReadAllTextAsync(filePath, token);
+                    string hash = _hashService.ComputeSha256Hash(text);
                     fileData.Add((filePath, hash, text));
                 }
                 catch (UnauthorizedAccessException ex)
@@ -66,8 +80,14 @@ namespace TextAnalyzer.Application.Analysis
                 }
             });
 
-            var allHashes = fileData.Select(x => x.Hash).ToList();
-            var cachedFilesList = await _dbContext.Files
+            return fileData;
+        }
+
+        private async Task<Dictionary<string?, FileEntity>> GetCachedFilesAsync(
+            ConcurrentBag<(string Path, string Hash, string Text)> fileData, CancellationToken ct)
+        {
+            List<string> allHashes = fileData.Select(x => x.Hash).ToList();
+            List<FileEntity> cachedFilesList = await _dbContext.Files
                 .Include(f => f.Result)
                 .Where(f => allHashes.Contains(f.FileHash))
                 .ToListAsync(ct);
@@ -76,9 +96,19 @@ namespace TextAnalyzer.Application.Analysis
             // This acts as a defensive mechanism against legacy duplicate records 
             // in the database that share the same FileHash, preventing ArgumentException 
             // (duplicate keys) during ToDictionary execution.
-            var cachedFiles = cachedFilesList
+            Dictionary<string?, FileEntity> cachedFiles = cachedFilesList
                 .GroupBy(f => f.FileHash)
                 .ToDictionary(g => g.Key, g => g.First());
+
+            return cachedFiles;
+        }
+
+        private async Task<ConcurrentBag<FileAnalysisResult>> AnalyzeTextsAsync(
+            ConcurrentBag<(string Path, string Hash, string Text)> fileData,
+            Dictionary<string?, FileEntity> cachedFiles,
+            ParallelOptions parallelOptions)
+        {
+            ConcurrentBag<FileAnalysisResult> results = new ConcurrentBag<FileAnalysisResult>();
 
             await Parallel.ForEachAsync(fileData, parallelOptions, async (data, ct) =>
             {
@@ -86,7 +116,7 @@ namespace TextAnalyzer.Application.Analysis
                 {
                     TextAnalysisResult result;
 
-                    if (cachedFiles.TryGetValue(data.Hash, out var cachedEntity))
+                    if (cachedFiles.TryGetValue(data.Hash, out FileEntity? cachedEntity))
                     {
                         _logger.LogInformation("Found cached result for file: {FilePath}", data.Path);
                         result = new TextAnalysisResult(
@@ -109,27 +139,37 @@ namespace TextAnalyzer.Application.Analysis
                 }
             });
 
-            var session = await _dbContext.Sessions
+            return results;
+        }
+
+        private async Task SaveResultsToDatabaseAsync(
+            Guid sessionId,
+            ConcurrentBag<(string Path, string Hash, string Text)> fileData,
+            Dictionary<string?, FileEntity> cachedFiles,
+            ConcurrentBag<FileAnalysisResult> results,
+            CancellationToken ct)
+        {
+            SessionEntity? session = await _dbContext.Sessions
                 .Include(s => s.Files)
-                .FirstOrDefaultAsync(s => s.Id == message.SessionId, ct);
+                .FirstOrDefaultAsync(s => s.Id == sessionId, ct);
 
             if (session == null)
             {
-                _logger.LogWarning("Session {SessionId} not found in DB. Skipping batch.", message.SessionId);
+                _logger.LogWarning("Session {SessionId} not found in DB. Skipping batch.", sessionId);
                 return;
             }
 
-            foreach (var data in fileData)
+            foreach ((string Path, string Hash, string Text) data in fileData)
             {
-                if (cachedFiles.TryGetValue(data.Hash, out var existingFile))
+                if (cachedFiles.TryGetValue(data.Hash, out FileEntity? existingFile))
                 {
                     session.Files.Add(existingFile);
                 }
                 else
                 {
-                    var analysisResult = results.First(r => r.Hash == data.Hash).AnalysisResult;
+                    TextAnalysisResult analysisResult = results.First(r => r.Hash == data.Hash).AnalysisResult;
 
-                    var newFile = new FileEntity
+                    FileEntity newFile = new FileEntity
                     {
                         Id = Guid.NewGuid(),
                         FilePath = data.Path,
@@ -149,7 +189,6 @@ namespace TextAnalyzer.Application.Analysis
             }
 
             session.FinishedAt = DateTime.UtcNow; // a little dirty but works for now
-            _logger.LogInformation("Successfully processed batch of {Count} files for Session {SessionId}. Cache hits: {CacheHits}", message.FilePaths.Count(), message.SessionId, cachedFiles.Count);
 
             await _dbContext.SaveChangesAsync(ct);
         }

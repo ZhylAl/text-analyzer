@@ -9,8 +9,8 @@ public class CsvFileAnalysisResultWriter : IFileAnalysisResultWriter
 {
     public void WriteResults(string outputFilePath, IEnumerable<FileAnalysisExportDto> results)
     {
-        using var writer = new StreamWriter(outputFilePath);
-        using var csv = new CsvWriter(writer, CultureInfo.InvariantCulture);
+        using StreamWriter writer = new StreamWriter(outputFilePath);
+        using CsvWriter csv = new CsvWriter(writer, CultureInfo.InvariantCulture);
         
         csv.WriteRecords(results);
     }

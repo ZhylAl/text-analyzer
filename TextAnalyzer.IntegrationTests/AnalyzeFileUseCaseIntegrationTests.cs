@@ -4,6 +4,7 @@ using Moq;
 using TextAnalyzer.Application.Analysis;
 using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Application.Services;
+using TextAnalyzer.Domain.Entities;
 using TextAnalyzer.Domain.Models;
 using TextAnalyzer.Infrastructure.Data;
 using TextAnalyzer.Infrastructure.Reader;
@@ -22,28 +23,28 @@ public class AnalyzeFileUseCaseIntegrationTests : IClassFixture<PostgreSqlDataba
     [Fact]
     public async Task Execute_ShouldAnalyzeRealFile_AndSaveToRealDb()
     {
-        var options = new DbContextOptionsBuilder<TextAnalyzerDbContext>()
+        DbContextOptions<TextAnalyzerDbContext> options = new DbContextOptionsBuilder<TextAnalyzerDbContext>()
             .UseNpgsql(_fixture.GetConnectionString())
             .Options;
 
-        using var dbContext = new TextAnalyzerDbContext(options);
+        using TextAnalyzerDbContext dbContext = new TextAnalyzerDbContext(options);
         await dbContext.Database.EnsureCreatedAsync();
 
         dbContext.Sessions.RemoveRange(dbContext.Sessions);
         dbContext.Files.RemoveRange(dbContext.Files);
         await dbContext.SaveChangesAsync();
 
-        var reader = new LocalFileReader();
-        var analyzer = new TextAnalyzerService();
-        var logger = NullLogger<AnalyzeFileUseCase>.Instance;
-        var hashService = new HashService();
-        var useCase = new AnalyzeFileUseCase(reader, analyzer, dbContext, logger, hashService); 
+        LocalFileReader reader = new LocalFileReader();
+        TextAnalyzerService analyzer = new TextAnalyzerService();
+        NullLogger<AnalyzeFileUseCase> logger = NullLogger<AnalyzeFileUseCase>.Instance;
+        HashService hashService = new HashService();
+        AnalyzeFileUseCase useCase = new AnalyzeFileUseCase(reader, analyzer, dbContext, logger, hashService); 
 
-        using var tempFile = new TempFileHelper("Hello integration test world");
+        using TempFileHelper tempFile = new TempFileHelper("Hello integration test world");
 
         await useCase.Execute(tempFile.FilePath, default);
 
-        var savedSession = await dbContext.Sessions
+        SessionEntity? savedSession = await dbContext.Sessions
             .Include(s => s.Files)
             .ThenInclude(f => f.Result)
             .FirstOrDefaultAsync();
@@ -58,27 +59,27 @@ public class AnalyzeFileUseCaseIntegrationTests : IClassFixture<PostgreSqlDataba
     [Fact] 
     public async Task Execute_ShouldUseCache_OnSubsequentRuns()
     {
-        var options = new DbContextOptionsBuilder<TextAnalyzerDbContext>()
+        DbContextOptions<TextAnalyzerDbContext> options = new DbContextOptionsBuilder<TextAnalyzerDbContext>()
             .UseNpgsql(_fixture.GetConnectionString())
             .Options;
-        using var dbContext = new TextAnalyzerDbContext(options);
+        using TextAnalyzerDbContext dbContext = new TextAnalyzerDbContext(options);
         await dbContext.Database.EnsureCreatedAsync();
 
         dbContext.Sessions.RemoveRange(dbContext.Sessions);
         dbContext.Files.RemoveRange(dbContext.Files);
         await dbContext.SaveChangesAsync();
 
-        var reader = new LocalFileReader();
-        var mockAnalyzer = new Mock<ITextAnalyzerService>();
-        var logger = NullLogger<AnalyzeFileUseCase>.Instance;
-        var hashService = new HashService();
+        LocalFileReader reader = new LocalFileReader();
+        Mock<ITextAnalyzerService> mockAnalyzer = new Mock<ITextAnalyzerService>();
+        NullLogger<AnalyzeFileUseCase> logger = NullLogger<AnalyzeFileUseCase>.Instance;
+        HashService hashService = new HashService();
 
-        var useCase = new AnalyzeFileUseCase(reader, mockAnalyzer.Object, dbContext, logger, hashService);
+        AnalyzeFileUseCase useCase = new AnalyzeFileUseCase(reader, mockAnalyzer.Object, dbContext, logger, hashService);
 
         mockAnalyzer.Setup(a => a.Analyze(It.IsAny<string>()))
             .Returns(new TextAnalysisResult(1, 1, 1, "test"));
 
-        using var tempFile = new TempFileHelper("Hello integration test world");
+        using TempFileHelper tempFile = new TempFileHelper("Hello integration test world");
 
         await useCase.Execute(tempFile.FilePath, default);
         await useCase.Execute(tempFile.FilePath, default);

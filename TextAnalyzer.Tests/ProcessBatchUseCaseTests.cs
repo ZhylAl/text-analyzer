@@ -21,7 +21,7 @@ public class ProcessBatchUseCaseTests
 
     public ProcessBatchUseCaseTests()
     {
-        var options = new DbContextOptionsBuilder<TextAnalyzerDbContext>()
+        DbContextOptions<TextAnalyzerDbContext> options = new DbContextOptionsBuilder<TextAnalyzerDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
         _dbContext = new TextAnalyzerDbContext(options);
@@ -44,12 +44,12 @@ public class ProcessBatchUseCaseTests
     public async Task ExecuteAsync_ShouldProcessNewFilesAndSaveToDb()
     {
         // Arrange
-        var sessionId = Guid.NewGuid();
-        var session = new SessionEntity { Id = sessionId, ExecutionModeId = 1 };
+        Guid sessionId = Guid.NewGuid();
+        SessionEntity session = new SessionEntity { Id = sessionId, ExecutionModeId = 1 };
         _dbContext.Sessions.Add(session);
         await _dbContext.SaveChangesAsync();
 
-        var message = new FileBatchAnalysisMessage(sessionId, new[] { "file1.txt" });
+        FileBatchAnalysisMessage message = new FileBatchAnalysisMessage(sessionId, new[] { "file1.txt" });
 
         _mockFileReader.Setup(f => f.ReadAllTextAsync("file1.txt", It.IsAny<CancellationToken>()))
             .ReturnsAsync("test text");
@@ -64,10 +64,10 @@ public class ProcessBatchUseCaseTests
         await _useCase.ExecuteAsync(message, CancellationToken.None);
 
         // Assert
-        var updatedSession = await _dbContext.Sessions.Include(s => s.Files).ThenInclude(f => f.Result).SingleOrDefaultAsync(s => s.Id == sessionId);
+        SessionEntity? updatedSession = await _dbContext.Sessions.Include(s => s.Files).ThenInclude(f => f.Result).SingleOrDefaultAsync(s => s.Id == sessionId);
         Assert.NotNull(updatedSession);
         Assert.Single(updatedSession.Files);
-        var file = updatedSession.Files.First();
+        FileEntity file = updatedSession.Files.First();
         Assert.Equal("file1.txt", file.FilePath);
         Assert.Equal("hash1", file.FileHash);
         Assert.NotNull(file.Result);
@@ -82,11 +82,11 @@ public class ProcessBatchUseCaseTests
     public async Task ExecuteAsync_ShouldUseCachedResult_WhenFileHashMatches()
     {
         // Arrange
-        var sessionId = Guid.NewGuid();
-        var session = new SessionEntity { Id = sessionId, ExecutionModeId = 1 };
+        Guid sessionId = Guid.NewGuid();
+        SessionEntity session = new SessionEntity { Id = sessionId, ExecutionModeId = 1 };
         _dbContext.Sessions.Add(session);
         
-        var existingFile = new FileEntity
+        FileEntity existingFile = new FileEntity
         {
             Id = Guid.NewGuid(),
             FilePath = "old_file.txt",
@@ -103,7 +103,7 @@ public class ProcessBatchUseCaseTests
         _dbContext.Files.Add(existingFile);
         await _dbContext.SaveChangesAsync();
 
-        var message = new FileBatchAnalysisMessage(sessionId, new[] { "file2.txt" });
+        FileBatchAnalysisMessage message = new FileBatchAnalysisMessage(sessionId, new[] { "file2.txt" });
 
         _mockFileReader.Setup(f => f.ReadAllTextAsync("file2.txt", It.IsAny<CancellationToken>()))
             .ReturnsAsync("cached text");
@@ -117,10 +117,10 @@ public class ProcessBatchUseCaseTests
         // Assert
         _mockAnalyzerService.Verify(a => a.Analyze(It.IsAny<string>()), Times.Never); // Should not call analyzer
         
-        var updatedSession = await _dbContext.Sessions.Include(s => s.Files).ThenInclude(f => f.Result).SingleOrDefaultAsync(s => s.Id == sessionId);
+        SessionEntity? updatedSession = await _dbContext.Sessions.Include(s => s.Files).ThenInclude(f => f.Result).SingleOrDefaultAsync(s => s.Id == sessionId);
         Assert.NotNull(updatedSession);
         Assert.Single(updatedSession.Files);
-        var file = updatedSession.Files.First();
+        FileEntity file = updatedSession.Files.First();
         Assert.Equal(existingFile.Id, file.Id); // Uses existing file entity
     }
 }

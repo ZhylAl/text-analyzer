@@ -32,7 +32,7 @@ namespace TextAnalyzer.Infrastructure
 
             services.AddSingleton<IConnectionFactory>(sp =>
                 {
-                    var rabbitSettings = sp.GetRequiredService<IOptions<RabbitMqSettings>>().Value;
+                    RabbitMqSettings rabbitSettings = sp.GetRequiredService<IOptions<RabbitMqSettings>>().Value;
 
                     return new ConnectionFactory
                     {
@@ -43,7 +43,7 @@ namespace TextAnalyzer.Infrastructure
             services
                 .AddSerilog((sp, loggerConfiguration) =>
                 {
-                    var dbSettings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<DatabaseSettings>>().Value;
+                    DatabaseSettings dbSettings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<DatabaseSettings>>().Value;
 
                     loggerConfiguration
                         .MinimumLevel.Information()
@@ -54,7 +54,7 @@ namespace TextAnalyzer.Infrastructure
                 })
                 .AddDbContext<TextAnalyzerDbContext>((sp, options) =>
                 {
-                    var dbSettings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<DatabaseSettings>>().Value;
+                    DatabaseSettings dbSettings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<DatabaseSettings>>().Value;
                     options.UseNpgsql(dbSettings.DefaultConnection);
                 })
                 .AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<TextAnalyzerDbContext>())

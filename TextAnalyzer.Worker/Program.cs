@@ -8,14 +8,14 @@ namespace TextAnalyzer.Worker
     {
         public static void Main(string[] args)
         {
-            var builder = Host.CreateApplicationBuilder(args);
+            HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
             builder.Services.AddApplicationServices();
             builder.Services.AddInfrastructureServices(builder.Configuration);
 
             builder.Services.AddHostedService<Worker>();
 
-            var host = builder.Build();
+            IHost host = builder.Build();
             host.Run();
         }
     }

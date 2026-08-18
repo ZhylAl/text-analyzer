@@ -4,6 +4,7 @@ using Moq;
 using TextAnalyzer.Application.Analysis;
 using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Application.Models;
+using TextAnalyzer.Domain.Entities;
 using TextAnalyzer.Domain.Models;
 using TextAnalyzer.Infrastructure.Data;
 
@@ -30,7 +31,7 @@ public class AnalyzeFolderUseCaseTests
         _mockLogger = new Mock<ILogger<AnalyzeFolderUseCase>>();
         _mockHashService = new Mock<IHashService>();
 
-        var options = new DbContextOptionsBuilder<TextAnalyzerDbContext>()
+        DbContextOptions<TextAnalyzerDbContext> options = new DbContextOptionsBuilder<TextAnalyzerDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
         _dbContext = new TextAnalyzerDbContext(options);
@@ -50,7 +51,7 @@ public class AnalyzeFolderUseCaseTests
     {
         // Arrange
         string folderPath = "FakeFolder";
-        var filePaths = new[] { Path.Combine(folderPath, "file1.txt"), Path.Combine(folderPath, "file2.txt") };
+        string[] filePaths = new[] { Path.Combine(folderPath, "file1.txt"), Path.Combine(folderPath, "file2.txt") };
 
         _mockDirectoryReader.Setup(d => d.GetTextFiles(folderPath)).Returns(filePaths);
 
@@ -89,7 +90,7 @@ public class AnalyzeFolderUseCaseTests
         Assert.Contains(capturedExportDtos, d => d.FileName == "file1.txt" && d.LongestWord == "world");
         Assert.Contains(capturedExportDtos, d => d.FileName == "file2.txt" && d.LongestWord == "text");
 
-        var savedSession = await _dbContext.Sessions.Include(s => s.Files).SingleOrDefaultAsync();
+        SessionEntity? savedSession = await _dbContext.Sessions.Include(s => s.Files).SingleOrDefaultAsync();
         Assert.NotNull(savedSession);
         Assert.Equal((int)ExecutionMode.Folder, savedSession.ExecutionModeId);
         Assert.Equal(2, savedSession.Files.Count); 
@@ -111,7 +112,7 @@ public class AnalyzeFolderUseCaseTests
         // Assert
         Assert.Equal(string.Empty, result.LongestWordOverall);
         _mockResultWriter.Verify(w => w.WriteResults(It.IsAny<string>(), It.Is<IEnumerable<FileAnalysisExportDto>>(dtos => !dtos.Any())), Times.Once);
-        var savedSession = await _dbContext.Sessions.Include(s => s.Files).SingleOrDefaultAsync();
+        SessionEntity? savedSession = await _dbContext.Sessions.Include(s => s.Files).SingleOrDefaultAsync();
         Assert.NotNull(savedSession);
         Assert.Empty(savedSession.Files);
     }
@@ -121,7 +122,7 @@ public class AnalyzeFolderUseCaseTests
     {
         // Arrange
         string folderPath = "FakeFolder";
-        var filePaths = new[] { Path.Combine(folderPath, "bad.txt"), Path.Combine(folderPath, "good.txt") };
+        string[] filePaths = new[] { Path.Combine(folderPath, "bad.txt"), Path.Combine(folderPath, "good.txt") };
         
         _mockDirectoryReader.Setup(d => d.GetTextFiles(folderPath)).Returns(filePaths);
 
@@ -148,7 +149,7 @@ public class AnalyzeFolderUseCaseTests
         Assert.Single(capturedExportDtos);
         Assert.Equal("good.txt", capturedExportDtos.First().FileName);
 
-        var savedSession = await _dbContext.Sessions.Include(s => s.Files).SingleOrDefaultAsync();
+        SessionEntity? savedSession = await _dbContext.Sessions.Include(s => s.Files).SingleOrDefaultAsync();
         Assert.NotNull(savedSession);
         Assert.Single(savedSession.Files); 
 

@@ -9,8 +9,8 @@
             FolderPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             Directory.CreateDirectory(FolderPath);
 
-            var file1 = Path.Combine(FolderPath, "file1.txt");
-            var file2 = Path.Combine(FolderPath, "file2.txt");
+            string file1 = Path.Combine(FolderPath, "file1.txt");
+            string file2 = Path.Combine(FolderPath, "file2.txt");
             File.WriteAllText(file1, @"Content for  
 file1
 ");

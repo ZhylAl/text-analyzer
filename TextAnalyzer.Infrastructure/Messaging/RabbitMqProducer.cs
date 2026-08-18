@@ -15,7 +15,7 @@ public class RabbitMqProducer : IMessageProducer
 
     public RabbitMqProducer(IOptions<RabbitMqSettings> options)
     {
-        var settings = options.Value;
+        RabbitMqSettings settings = options.Value;
         _queueName = settings.QueueName;
         _factory = new ConnectionFactory { Uri = new Uri(settings.ConnectionString) };
     }
@@ -38,8 +38,8 @@ public class RabbitMqProducer : IMessageProducer
 
     public async Task PublishFileAnalysisRequestAsync(IEnumerable<string> filePaths, Guid sessionId, CancellationToken cancellationToken = default)
     {
-        var connection = await GetConnectionAsync(cancellationToken);
-        using var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
+        IConnection connection = await GetConnectionAsync(cancellationToken);
+        using IChannel channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
 
         await channel.QueueDeclareAsync(
             queue: _queueName,
@@ -49,11 +49,11 @@ public class RabbitMqProducer : IMessageProducer
             arguments: null,
             cancellationToken: cancellationToken);
 
-        var message = new FileBatchAnalysisMessage(sessionId, filePaths);
+        FileBatchAnalysisMessage message = new FileBatchAnalysisMessage(sessionId, filePaths);
 
-        var body = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(message);
+        byte[] body = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(message);
 
-        var props = new BasicProperties { Persistent = true };
+        BasicProperties props = new BasicProperties { Persistent = true };
 
         await channel.BasicPublishAsync(
             exchange: string.Empty,

@@ -25,7 +25,7 @@ public class AnalyzeFileUseCaseTests
         _mockLogger = new Mock<ILogger<AnalyzeFileUseCase>>();
         _mockHashService = new Mock<IHashService>();
 
-        var options = new DbContextOptionsBuilder<TextAnalyzerDbContext>()
+        DbContextOptions<TextAnalyzerDbContext> options = new DbContextOptionsBuilder<TextAnalyzerDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
 
@@ -45,7 +45,7 @@ public class AnalyzeFileUseCaseTests
         // Arrange
         string filePath = "test.txt";
         string fileContent = "Hello test world";
-        var expectedAnalysisResult = new TextAnalysisResult(16, 3, 1, "world");
+        TextAnalysisResult expectedAnalysisResult = new TextAnalysisResult(16, 3, 1, "world");
 
         _mockFileReader
             .Setup(f => f.ReadAllTextAsync(filePath, It.IsAny<CancellationToken>()))
@@ -61,7 +61,7 @@ public class AnalyzeFileUseCaseTests
 
 
         // Act
-        var result = await _useCase.Execute(filePath, CancellationToken.None);
+        TextAnalysisResult result = await _useCase.Execute(filePath, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -70,7 +70,7 @@ public class AnalyzeFileUseCaseTests
         Assert.Equal(expectedAnalysisResult.LineCount, result.LineCount);
         Assert.Equal(expectedAnalysisResult.LongestWord, result.LongestWord);
 
-        var savedSession = await _dbContext.Sessions
+        SessionEntity? savedSession = await _dbContext.Sessions
             .Include(s => s.Files)
             .ThenInclude(f => f.Result)
             .SingleOrDefaultAsync();
@@ -79,7 +79,7 @@ public class AnalyzeFileUseCaseTests
         Assert.Equal((int)ExecutionMode.SingleFile, savedSession.ExecutionModeId);
         Assert.Single(savedSession.Files);
 
-        var savedFile = savedSession.Files.First();
+        FileEntity savedFile = savedSession.Files.First();
         Assert.Equal(filePath, savedFile.FilePath);
         Assert.Equal("testhash123", savedFile.FileHash);
 
@@ -97,13 +97,13 @@ public class AnalyzeFileUseCaseTests
         // Arrange
         string filePath = "test.txt";
         string fileContent = "Hello test world";
-        var expectedAnalysisResult = new TextAnalysisResult(16, 3, 1, "world");
+        TextAnalysisResult expectedAnalysisResult = new TextAnalysisResult(16, 3, 1, "world");
 
         _mockFileReader
             .Setup(f => f.ReadAllTextAsync(filePath, It.IsAny<CancellationToken>()))
             .ReturnsAsync(fileContent);
 
-        var existingFile = new FileEntity
+        FileEntity existingFile = new FileEntity
         {
             Id = Guid.NewGuid(),
             FilePath = "test.txt",
@@ -118,7 +118,7 @@ public class AnalyzeFileUseCaseTests
             .Returns("testhash123");
 
         // Act
-        var result = await _useCase.Execute(filePath, CancellationToken.None);
+        TextAnalysisResult result = await _useCase.Execute(filePath, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -127,7 +127,7 @@ public class AnalyzeFileUseCaseTests
         Assert.Equal(expectedAnalysisResult.LineCount, result.LineCount);
         Assert.Equal(expectedAnalysisResult.LongestWord, result.LongestWord);
 
-        var savedSession = await _dbContext.Sessions
+        SessionEntity? savedSession = await _dbContext.Sessions
             .Include(s => s.Files)
             .ThenInclude(f => f.Result)
             .SingleOrDefaultAsync();
@@ -136,7 +136,7 @@ public class AnalyzeFileUseCaseTests
         Assert.Equal((int)ExecutionMode.SingleFile, savedSession.ExecutionModeId);
         Assert.Single(savedSession.Files);
 
-        var savedFile = savedSession.Files.First();
+        FileEntity savedFile = savedSession.Files.First();
         Assert.Equal(filePath, savedFile.FilePath);
         Assert.Equal("testhash123", savedFile.FileHash);
 

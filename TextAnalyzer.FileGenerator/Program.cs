@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using Bogus;
 using Spectre.Console;
@@ -8,7 +9,7 @@ namespace TextAnalyzer.FileGenerator
     {
         static async Task Main(string[] args)
         {
-            var cts = new CancellationTokenSource();
+            CancellationTokenSource cts = new CancellationTokenSource();
             Console.CancelKeyPress += (sender, e) =>
             {
                 AnsiConsole.MarkupLine("\n[yellow]Cancelling generation... Please wait![/]");
@@ -25,7 +26,7 @@ namespace TextAnalyzer.FileGenerator
 
                 AnsiConsole.Write(new FigletText("File Generator").LeftJustified().Color(Color.Blue));
 
-                var choice = AnsiConsole.Prompt(
+                string? choice = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()
                         .Title("[blue]Configuration Menu (Select to edit)[/]")
                         .AddChoices(
@@ -46,8 +47,8 @@ namespace TextAnalyzer.FileGenerator
             if (!Directory.Exists(filePath))
                 Directory.CreateDirectory(filePath);
 
-            var faker = new Faker("en");
-            var sb = new StringBuilder();
+            Faker faker = new Faker("en");
+            StringBuilder sb = new StringBuilder();
             for (int i = 0; i < 500; i++)
             {
                 sb.AppendLine(faker.Lorem.Paragraph());
@@ -55,12 +56,12 @@ namespace TextAnalyzer.FileGenerator
             string textChunk = sb.ToString();
             int chunkByteSize = Encoding.UTF8.GetByteCount(textChunk);
 
-            var sw = System.Diagnostics.Stopwatch.StartNew();
+            Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
             await AnsiConsole.Status()
                 .Spinner(Spinner.Known.Dots)
                 .StartAsync("Generating files...", async ctx =>
                 {
-                    var parallelOptions = new ParallelOptions
+                    ParallelOptions parallelOptions = new ParallelOptions
                     {
                         MaxDegreeOfParallelism = Environment.ProcessorCount,
                         CancellationToken = cts.Token
@@ -86,9 +87,9 @@ namespace TextAnalyzer.FileGenerator
             string fileName = $"file_{Guid.NewGuid()}.txt";
             string fullPath = Path.Combine(filePath, fileName);
 
-            var fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 65536, useAsync: true);
+            FileStream fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 65536, useAsync: true);
             await using (fs)
-            await using (var writer = new StreamWriter(fs))
+            await using (StreamWriter writer = new StreamWriter(fs))
             {
                 while (currentBytes < targetSizeBytes)
                 {

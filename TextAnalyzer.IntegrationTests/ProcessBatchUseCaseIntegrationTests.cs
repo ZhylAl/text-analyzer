@@ -4,9 +4,11 @@ using Moq;
 using TextAnalyzer.Application.Analysis;
 using TextAnalyzer.Application.Interfaces;
 using TextAnalyzer.Application.Models;
+using TextAnalyzer.Application.Services;
 using TextAnalyzer.Domain.Entities;
 using TextAnalyzer.Domain.Models;
 using TextAnalyzer.Infrastructure.Data;
+using TextAnalyzer.Infrastructure.Reader;
 
 namespace TextAnalyzer.IntegrationTests
 {
@@ -23,11 +25,11 @@ namespace TextAnalyzer.IntegrationTests
         [Fact]
         public async Task ExecuteAsync_ShouldSaveResultsToDatabase()
         {
-            var options = new DbContextOptionsBuilder<TextAnalyzerDbContext>()
+            DbContextOptions<TextAnalyzerDbContext> options = new DbContextOptionsBuilder<TextAnalyzerDbContext>()
                 .UseNpgsql(_dbFixture.GetConnectionString())
                 .Options;
 
-            using (var setupContext = new TextAnalyzerDbContext(options))
+            using (TextAnalyzerDbContext setupContext = new TextAnalyzerDbContext(options))
             {
                 await setupContext.Database.EnsureCreatedAsync(); 
                 
@@ -38,30 +40,30 @@ namespace TextAnalyzer.IntegrationTests
                 await setupContext.SaveChangesAsync();
             }
 
-            var sessionId = Guid.NewGuid();
+            Guid sessionId = Guid.NewGuid();
 
-            using (var arrangeContext = new TextAnalyzerDbContext(options))
+            using (TextAnalyzerDbContext arrangeContext = new TextAnalyzerDbContext(options))
             {
-                var session = new SessionEntity { Id = sessionId, ExecutionModeId = 1 }; 
+                SessionEntity session = new SessionEntity { Id = sessionId, ExecutionModeId = 1 }; 
                 arrangeContext.Sessions.Add(session);
                 await arrangeContext.SaveChangesAsync();
             }
 
-            var analyzerService = new TextAnalyzer.Application.Services.TextAnalyzerService();
-            var fileReader = new TextAnalyzer.Infrastructure.Reader.LocalFileReader();
-            var hashService = new TextAnalyzer.Application.Services.HashService();
-            var logger = NullLogger<ProcessBatchUseCase>.Instance;
+            TextAnalyzerService analyzerService = new TextAnalyzer.Application.Services.TextAnalyzerService();
+            LocalFileReader fileReader = new TextAnalyzer.Infrastructure.Reader.LocalFileReader();
+            HashService hashService = new TextAnalyzer.Application.Services.HashService();
+            NullLogger<ProcessBatchUseCase> logger = NullLogger<ProcessBatchUseCase>.Instance;
 
             // Create a real temporary file
-            var tempFilePath = Path.GetTempFileName();
-            var testText = "hello integration test world";
+            string tempFilePath = Path.GetTempFileName();
+            string testText = "hello integration test world";
             await File.WriteAllTextAsync(tempFilePath, testText);
 
             try
             {
-                using (var actContext = new TextAnalyzerDbContext(options))
+                using (TextAnalyzerDbContext actContext = new TextAnalyzerDbContext(options))
                 {
-                    var useCase = new ProcessBatchUseCase(
+                    ProcessBatchUseCase useCase = new ProcessBatchUseCase(
                         actContext,
                         analyzerService,
                         fileReader,
@@ -69,16 +71,16 @@ namespace TextAnalyzer.IntegrationTests
                         logger
                     );
 
-                    var message = new FileBatchAnalysisMessage(sessionId, new[] { tempFilePath });
+                    FileBatchAnalysisMessage message = new FileBatchAnalysisMessage(sessionId, new[] { tempFilePath });
 
                     // Act
                     await useCase.ExecuteAsync(message, CancellationToken.None);
                 }
 
-                using (var assertContext = new TextAnalyzerDbContext(options))
+                using (TextAnalyzerDbContext assertContext = new TextAnalyzerDbContext(options))
                 {
                     // Assert
-                    var savedSession = await assertContext.Sessions
+                    SessionEntity? savedSession = await assertContext.Sessions
                         .Include(s => s.Files)
                         .ThenInclude(f => f.Result)
                         .SingleOrDefaultAsync(s => s.Id == sessionId);
@@ -87,11 +89,11 @@ namespace TextAnalyzer.IntegrationTests
                     Assert.NotEqual(default(DateTime), savedSession.FinishedAt);
                     Assert.Single(savedSession.Files);
                     
-                    var savedFile = savedSession.Files.First();
+                    FileEntity savedFile = savedSession.Files.First();
                     Assert.Equal(tempFilePath, savedFile.FilePath);
                     Assert.NotNull(savedFile.FileHash);
                     
-                    var savedResult = savedFile.Result;
+                    ResultEntity savedResult = savedFile.Result;
                     Assert.NotNull(savedResult);
                     // "hello integration test world" -> 28 chars, 4 words, 1 line, "integration" is longest word
                     Assert.Equal(28, savedResult.CharCount);

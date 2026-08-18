@@ -11,7 +11,7 @@ namespace TextAnalyzer.Application.Services
             if (string.IsNullOrEmpty(text))
                 return string.Empty;
 
-            using var sha256 = SHA256.Create();
+            using SHA256 sha256 = SHA256.Create();
             byte[] bytes = Encoding.UTF8.GetBytes(text);
             byte[] hashBytes = sha256.ComputeHash(bytes);
 
