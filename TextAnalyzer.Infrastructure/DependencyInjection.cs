@@ -1,0 +1,69 @@
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using RabbitMQ.Client;
+using Serilog;
+using TextAnalyzer.Application.Interfaces;
+using TextAnalyzer.Infrastructure.Data;
+using TextAnalyzer.Infrastructure.Export;
+using TextAnalyzer.Infrastructure.Messaging;
+using TextAnalyzer.Infrastructure.Reader;
+using TextAnalyzer.Infrastructure.Settings;
+
+namespace TextAnalyzer.Infrastructure
+{
+    public static class DependencyInjection
+    {
+        public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddOptions<RabbitMqSettings>()
+                .BindConfiguration(RabbitMqSettings.SectionName)
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+
+            services.AddOptions<DatabaseSettings>()
+                .BindConfiguration(DatabaseSettings.SectionName)
+                .ValidateDataAnnotations();
+
+            services.AddOptions<ReaderSettings>()
+                .BindConfiguration(ReaderSettings.SectionName)
+                .ValidateDataAnnotations();
+
+            services.AddSingleton<IConnectionFactory>(sp =>
+                {
+                    RabbitMqSettings rabbitSettings = sp.GetRequiredService<IOptions<RabbitMqSettings>>().Value;
+
+                    return new ConnectionFactory
+                    {
+                        Uri = new Uri(rabbitSettings.ConnectionString)
+                    };
+                });
+
+            services
+                .AddSerilog((sp, loggerConfiguration) =>
+                {
+                    DatabaseSettings dbSettings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<DatabaseSettings>>().Value;
+
+                    loggerConfiguration
+                        .MinimumLevel.Information()
+                        .WriteTo.PostgreSQL(
+                            connectionString: dbSettings.DefaultConnection,
+                            tableName: "Logs",
+                            needAutoCreateTable: true);
+                })
+                .AddDbContext<TextAnalyzerDbContext>((sp, options) =>
+                {
+                    DatabaseSettings dbSettings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<DatabaseSettings>>().Value;
+                    options.UseNpgsql(dbSettings.DefaultConnection);
+                })
+                .AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<TextAnalyzerDbContext>())
+                .AddSingleton<IFileReader, LocalFileReader>()
+                .AddSingleton<IDirectoryReader, LocalDirectoryReader>()
+                .AddSingleton<IFileAnalysisResultWriter, CsvFileAnalysisResultWriter>()
+                .AddSingleton<IMessageProducer, RabbitMqProducer>();
+
+            return services;
+        }
+    }
+}

@@ -1,5 +1,5 @@
-﻿using TextAnalyzer.Domain.Services;
-using Xunit;
+using TextAnalyzer.Application.Services;
+using TextAnalyzer.Domain.Models;
 
 namespace TextAnalyzer.Tests;
 
@@ -19,7 +19,7 @@ public class TextAnalyzerServiceTests
         string text = "Hello, world!";
 
         // Act
-        var result = _analyzerService.Analyze(text);
+        TextAnalysisResult result = _analyzerService.Analyze(text);
 
         // Assert
         Assert.Equal(13, result.CharCount);
@@ -35,7 +35,23 @@ public class TextAnalyzerServiceTests
         string text = "";
 
         // Act
-        var result = _analyzerService.Analyze(text);
+        TextAnalysisResult result = _analyzerService.Analyze(text);
+
+        // Assert
+        Assert.Equal(0, result.CharCount);
+        Assert.Equal(0, result.WordCount);
+        Assert.Equal(0, result.LineCount);
+        Assert.Equal(string.Empty, result.LongestWord);
+    }
+
+    [Fact]
+    public void Analyze_WithNullString_ReturnsZeros()
+    {
+        // Arrange
+        string text = null;
+
+        // Act
+        TextAnalysisResult result = _analyzerService.Analyze(text);
 
         // Assert
         Assert.Equal(0, result.CharCount);
@@ -51,7 +67,7 @@ public class TextAnalyzerServiceTests
         string text = "!?,.:;";
 
         // Act
-        var result = _analyzerService.Analyze(text);
+        TextAnalysisResult result = _analyzerService.Analyze(text);
 
         // Assert
         Assert.Equal(6, result.CharCount);
@@ -67,7 +83,7 @@ public class TextAnalyzerServiceTests
         string text = "One  two   three"; // Lots of spaces between words
 
         // Act
-        var result = _analyzerService.Analyze(text);
+        TextAnalysisResult result = _analyzerService.Analyze(text);
 
         // Assert
         Assert.Equal(16, result.CharCount);
@@ -83,12 +99,12 @@ public class TextAnalyzerServiceTests
         // Arrange
         string text = @"One  two   
 three";
-
+        text = text.Replace("\r\n", "\n"); // to have the same line separators on every OS
         // Act
-        var result = _analyzerService.Analyze(text);
+        TextAnalysisResult result = _analyzerService.Analyze(text);
 
         // Assert
-        Assert.Equal(18, result.CharCount);
+        Assert.Equal(17, result.CharCount);
         Assert.Equal(3, result.WordCount); 
         Assert.Equal(2, result.LineCount);
         Assert.Equal("three", result.LongestWord);
@@ -106,11 +122,13 @@ Let's add some tricky punctuation: (parentheses), ""quotes"", and hyphens-too.
 Here is a blank line above. What about an incredibly long word like Supercalifragilisticexpialidocious?
 Let's see if the analyzer handles it.";
 
+        text = text.Replace("\r\n", "\n"); // to have the same line separators on every OS
+
         // Act
-        var result = _analyzerService.Analyze(text);
+        TextAnalysisResult result = _analyzerService.Analyze(text);
 
         // Assert
-        Assert.Equal(316, result.CharCount);
+        Assert.Equal(311, result.CharCount);
         Assert.Equal(50, result.WordCount);
         Assert.Equal(6, result.LineCount);
         Assert.Equal("Supercalifragilisticexpialidocious", result.LongestWord);
